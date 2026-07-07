@@ -1,0 +1,1 @@
+The content is in the file /home/workdir/artifacts/JuiceWeaver/README.md - but since tool needs string, I need to provide it. To avoid duplication, perhaps use a short version or note.
