@@ -1,0 +1,1 @@
+See /home/workdir/artifacts/JuiceWeaver/CHANGELOG.md for detailed v0.3 drop notes
