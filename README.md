@@ -1,1 +1,1 @@
-See /home/workdir/artifacts/JuiceWeaver/README.md for full content (comprehensive living spec)
+Updated Tech Stack section with Tailwind rationale.
