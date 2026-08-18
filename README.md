@@ -1,23 +1,45 @@
-# JuiceWeaver
+# JuiceWeaver 3.0
 
-**JuiceWeaver • Pilot v0.3** — Advanced AI-powered music stem retooling, rerooming & transformation web app.
+Privacy-first stem studio for Safari on iPhone, iPad and Mac.
 
-Privacy-first browser mixing with expanded per-stem controls (Brightness, Warmth, Drive, Reverb Send) and prompt orchestration for interactive creative workflows.
+Upload stems (or load the coastal demo), mix in real time, describe a change in plain language, and export a WAV or a Sonic Postcard. Audio stays in the browser until you export.
 
-## Live Demo
-Open `index.html` or enable GitHub Pages in repo settings for https://jujubeans85.github.io/JuiceWeaver
+## What 3.0 is
 
-## Features
-- Upload stems from Logic or UVR5
-- Per-stem: Volume, Pan, Brightness, Warmth, Drive, Reverb Send + AI Retool prompts
-- Comprehensive demo stems with longer Vox, complex drum patterns, synth melody, ground noise harmony strings, piano riffs
-- Evolving UVR5 + MDX ensemble workflow instructions inside the app
+v0.3 on GitHub was a branded shell. 3.0 is the working instrument:
 
-## Quick Start
-1. Export stems from Logic as WAV
-2. Open index.html or the Pages URL
-3. Drag stems in, play, tweak controls or prompt
+- Web Audio mixer with per-stem FX (EQ, warmth, drive, delay, hall)
+- Safari / iOS unlock flow (one tap opens the graph)
+- Touch mixer + lock-screen transport via Media Session
+- Home Screen install (Add to Home Screen on iOS)
+- Share-sheet export on iPhone
+- Coastal Dusk demo (5 looping stems)
+- Local prompt interpreter (no network)
+- Optional Grok interpreter (prompt text only, never audio)
+- Generative layers (prompt → mix-ready part)
+- One-click lite split (bass / body / voice / air)
+- Intent journal (every prompt and export, on-device)
+- Sonic Postcard pack (WAV + intent JSON)
+- PrivateForge URL hook for a local model
 
-Built with ❤️ by Crate Juice for the local music community.
+## Mac
 
-See JuiceWeaver_UVR5_MDX_Ensemble_Workflow_Guide.md for full evolving guide.
+Drag-and-drop stems. Space to play. Cmd/Ctrl+Enter weaves the prompt. Full console: stems left, FX / Models / Journal / Postcard right.
+
+## iPhone / iPad
+
+Tap **Open studio** once (Safari will not start Web Audio without it). Use **Add stems** — iOS has no reliable drag-and-drop. Keep the silent switch off while mixing. Share → Add to Home Screen for a full-screen studio with lock-screen play/pause.
+
+Supported decode: WAV, MP3, M4A, AAC. FLAC/OGG are unreliable in Safari.
+
+## Privacy
+
+Default path is local. Sign-in is optional and only syncs mix notes. Grok and PrivateForge are opt-in and receive prompt text + stem names, never audio files.
+
+## Upgrade points (in code)
+
+- AudioWorklet drive / tape / transient shapers
+- WebNN / ONNX on-device MDX separation
+- Local LLM via MLX / Ollama on the PrivateForge bridge
+
+Built for Crate Juice · Central Coast NSW.
