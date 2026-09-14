@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JuiceWeaver • Pilot v0.3</title>
+    <title>JuiceWeaver</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -20,6 +20,20 @@
         .ai-magic { background: linear-gradient(90deg, #6366f1, #a855f7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 600; }
         .section-header { font-size: 0.75rem; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; color: #64748b; }
     </style>
+
+<!-- JUICE app identity: keep icon, page accent and share image aligned. -->
+<meta name="theme-color" content="#25DCE5">
+<meta name="apple-mobile-web-app-title" content="JuiceWeaver">
+<link rel="icon" type="image/svg+xml" href="identity/icon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="identity/icon-180.png">
+<link rel="manifest" href="identity.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:title" content="JuiceWeaver">
+<meta property="og:image" content="https://jujubeans85.github.io/JuiceWeaver/identity/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="JuiceWeaver — weave icon">
+<link rel="stylesheet" href="identity/identity.css">
 </head>
 <body class="bg-slate-950 text-slate-200">
     <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-lg sticky top-0 z-50">
@@ -28,7 +42,7 @@
                 <div class="flex items-center gap-x-4">
                     <div class="flex items-center gap-x-3">
                         <div class="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
-                            <i class="fa-solid fa-waveform-lines text-white text-3xl"></i>
+                            <img class="juice-identity-mark" src="identity/icon.svg" alt="" width="48" height="48">
                         </div>
                         <div>
                             <span class="font-display text-3xl font-semibold tracking-tighter">JuiceWeaver</span>

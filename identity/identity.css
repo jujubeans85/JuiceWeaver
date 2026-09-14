@@ -1,0 +1,4 @@
+:root{--juice-identity:#25DCE5;--juice-identity-ink:#05282C}
+.juice-identity-mark{width:48px;height:48px;border-radius:14px;object-fit:contain;vertical-align:middle;flex-shrink:0}
+h1 .juice-identity-mark{margin-right:12px}
+:root{--primary:#25DCE5}.bg-indigo-600{background-color:#25DCE5!important;color:#05282C!important}.text-indigo-400,.text-indigo-500{color:#25DCE5!important}.slider{accent-color:#25DCE5}.music-gradient{background:linear-gradient(135deg,#05282C,#12494B,#05282C)}.ai-magic{background-image:linear-gradient(90deg,#25DCE5,#B9FFFF)}nav .juice-identity-mark{width:40px;height:40px}.bg-slate-950{background-color:#041619}
