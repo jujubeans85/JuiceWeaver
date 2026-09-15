@@ -1,6 +1,7 @@
 import { JuiceEngine } from '../src/audio/engine.js';
 import { createDemo } from '../src/audio/demo.js';
 import { encodeWav, measurePeak } from '../src/audio/wav.js';
+import { checkedDecode } from '../src/imports.js';
 
 const runButton = document.querySelector('#run');
 const summary = document.querySelector('#summary');
@@ -401,6 +402,29 @@ runButton.addEventListener('click', async () => {
       download.href = downloadURL;
       download.hidden = false;
       return `4 original stems; 88 BPM; 8 bars; ${rendered.duration.toFixed(3)} s including tail; peak ${rendered.peak.toFixed(4)}; ${(decodedBytes / 1024 / 1024).toFixed(1)} MiB decoded / ${(originalBytes / 1024 / 1024).toFixed(1)} MiB original WAVs.`;
+    });
+    await check('Four WAV stems decode repeatedly while playback is suspended', async () => {
+      engine.stop();
+      await engine.context.suspend();
+      let completed = 0;
+      for (let batch = 0; batch < 2; batch++) {
+        let decodedBytes = 0;
+        for (let index = 0; index < 4; index++) {
+          const original = makeBuffer(0.1, (i) => i === 240 + index * 120 ? 0.125 : 0);
+          const bytes = encodeWav(original);
+          const source = bytes.slice(0);
+          const file = new File([bytes], `suspended-${batch}-${index}.wav`, { type: 'audio/wav' });
+          const buffer = await checkedDecode(engine, file, bytes, decodedBytes);
+          decodedBytes += buffer.length * buffer.numberOfChannels * 4;
+          assert(buffer.length === original.length && buffer.numberOfChannels === 1, 'Suspended import changed duration or channels.');
+          assert(Math.abs(buffer.getChannelData(0)[240 + index * 120] - 0.125) < 1 / 32768, 'Decoded stem lost its expected impulse.');
+          const retained = new Uint8Array(bytes);
+          assert(new Uint8Array(source).every((value, i) => value === retained[i]), 'Import altered original WAV bytes.');
+          assert(engine.context.state === 'suspended' && !engine.playing, 'Import resumed audio without pressing Play.');
+          completed++;
+        }
+      }
+      return `${completed} WAVs decoded in two four-file batches; context stayed suspended, source bytes intact, no playback gesture required.`;
     });
   } catch (error) {
     evidence.push({ name: 'Proof runner', passed: false, detail: error.message });

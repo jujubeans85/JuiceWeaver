@@ -1,5 +1,5 @@
 export const APP = Object.freeze({
-  id: 'juiceweaver', name: 'JuiceWeaver', version: '1.0.0-rc.2', brand: 'CRATE JUICE',
+  id: 'juiceweaver', name: 'JuiceWeaver', version: '1.0.0-rc.3', brand: 'CRATE JUICE',
   tagline: 'Every part. A new possibility.', accent: '#ff9d57',
   cream: '#f5dfc6', ink: '#140c08', background: './assets/chlomim-background.webp',
   displayFont: 'Caveat', logo: './identity/icon.svg', motion: true,

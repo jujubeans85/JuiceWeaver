@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0-rc.2",
-  "sourceFingerprint": "162a6663f36799392d0182c63a2e9e5990848390ac7d0829c8c952db82db513d",
+  "version": "1.0.0-rc.3",
+  "sourceFingerprint": "97e52851e98430c2f49e812dad2b65066fa543dd483437731af5c081baf6bf52",
   "kind": "evaluation release candidate",
-  "coreFiles": 32
+  "coreFiles": 33
 }
