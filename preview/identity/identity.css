@@ -1,0 +1,2 @@
+/* Compatibility tokens. The shared source of truth is foundation/tokens.css. */
+:root{--juice-identity:var(--cj-accent,#ff9d57);--juice-identity-ink:var(--cj-ink,#140c08)}

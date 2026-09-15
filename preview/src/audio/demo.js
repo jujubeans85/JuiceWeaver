@@ -157,9 +157,13 @@ export async function createDemo(engine) {
   const tracks = [];
   for (const specification of specifications) {
     const assetId = `${specification.id}-audio`;
+    const bytes = encodeWav(specification.buffer);
+    // The live demo uses the same PCM representation that project backup keeps.
+    // Reopening a saved demo therefore cannot silently change its source samples.
+    const buffer = await engine.decode(bytes);
     assets.set(assetId, {
       id: assetId, name: `${specification.name}.wav`, mime: 'audio/wav',
-      bytes: encodeWav(specification.buffer), buffer: specification.buffer,
+      bytes, buffer,
     });
     tracks.push({
       id: specification.id, assetId, name: specification.name, role: specification.role,

@@ -214,7 +214,9 @@ export class JuiceEngine {
   get position() {
     if (!this._playing || !this.context) return this._offset;
     const elapsed = Math.max(0, this.context.currentTime - this._startedAt) + this._offset;
-    return this._session?.loop && this._duration ? elapsed % this._duration : Math.min(elapsed, this._duration);
+    // Callers may mutate session.loop immediately before update(). The running
+    // transport keeps its original loop mode until the graph is rebuilt.
+    return this._graph?.loop && this._duration ? elapsed % this._duration : Math.min(elapsed, this._duration);
   }
 
   _emit(reason) {
@@ -256,6 +258,9 @@ export class JuiceEngine {
     if (metadata.duration > AUDIO_LIMITS.seconds) throw new Error('This stem is longer than three minutes. Trim it before importing.');
     if (metadata.duration <= 0) throw new Error('This audio file is empty.');
     const context = this._ensureContext();
+    if (metadata.duration * context.sampleRate * metadata.channels * 4 > AUDIO_LIMITS.decodedBytes) {
+      throw new Error('This file would exceed the decoded audio budget at this device’s sample rate. Use a shorter or mono PCM WAV stem.');
+    }
     let buffer;
     try { buffer = await context.decodeAudioData(bytes.slice(0)); }
     catch { throw new Error('This audio file could not be decoded. Try a PCM WAV, MP3, M4A or another format supported by your browser.'); }
@@ -323,8 +328,8 @@ export class JuiceEngine {
       for (const track of this._session.tracks) {
         let buffer = this._assets.get(track.assetId).buffer;
         if (buffer.duration < this._duration) {
-          // Sub-second mixed-length loops can be safely padded (<3 MiB for eight
-          // stereo stems). Native looping avoids an unbounded timer/source load.
+          // Sub-second mixed-length loops have bounded padding. Native looping
+          // avoids an unbounded timer/source load for extremely short loops.
           const padded = context.createBuffer(buffer.numberOfChannels, Math.ceil(this._duration * buffer.sampleRate), buffer.sampleRate);
           for (let channel = 0; channel < buffer.numberOfChannels; channel++) padded.getChannelData(channel).set(buffer.getChannelData(channel));
           buffer = padded;
@@ -395,7 +400,7 @@ export class JuiceEngine {
   }
 
   _scheduleLoops() {
-    if (!this._playing || !this._session.loop || !this._duration) return;
+    if (!this._playing || !this._graph?.loop || !this._duration) return;
     const now = this.context.currentTime;
     // Schedule multiple whole cycles ahead without allocating padded copies of stems.
     const horizon = Math.max(0.4, Math.min(30, this._duration * 3));
