@@ -156,6 +156,8 @@ $('play').addEventListener('click',async()=>{if(busy)return;try{if(engine.playin
 $('rewind').addEventListener('click',()=>{engine.seek(0);renderTransport();});
 $('loop').addEventListener('click',()=>{const before=snapshot();session.loop=!session.loop;record(before,session.loop?'Loop enabled':'Loop disabled');});
 $('seek').addEventListener('pointerdown',()=>seekActive=true);
+document.addEventListener('pointerup',()=>seekActive=false);
+document.addEventListener('pointercancel',()=>seekActive=false);
 $('seek').addEventListener('input',()=>$('current-time').textContent=secondsLabel(Number($('seek').value)));
 $('seek').addEventListener('change',()=>{engine.seek(Number($('seek').value));seekActive=false;renderTransport();});
 attachSlider($('master-volume'),value=>{session.masterDb=value;$('master-value').textContent=`${value} dB`;},()=>`Master level ${session.masterDb} dB`);

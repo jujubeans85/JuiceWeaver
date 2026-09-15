@@ -1,0 +1,10 @@
+import {mkdir,writeFile,readdir} from 'node:fs/promises';
+import {resolve} from 'node:path';
+const slug=process.argv[2]||'foundation-proof';
+if(!/^[a-z][a-z0-9-]{0,40}$/.test(slug))throw Error('Use a short lowercase app slug.');
+const output=resolve('examples',slug);await mkdir(output,{recursive:true});if((await readdir(output)).length&&!process.argv.includes('--force'))throw Error('That app already contains files. Choose another slug, or use --force to replace it.');
+const config={id:slug,name:'Foundation proof',brand:'CRATE JUICE',accent:'#adc6a2',cream:'#f5dfc6',ink:'#140c08',motion:true};
+await writeFile(resolve(output,'config.js'),'export default '+JSON.stringify(config,null,2)+';\n');
+await writeFile(resolve(output,'index.html'),`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#140c08"><title>CRATE JUICE · Foundation proof</title><link rel="stylesheet" href="../../foundation/tokens.css"><style>main{max-width:600px;margin:8vh auto;padding:24px}h1{font:600 52px var(--cj-display)}.cj-panel{padding:28px;margin-top:30px}p{line-height:1.8;color:var(--cj-muted)}output{display:block;font-size:50px;margin:20px 0}</style></head><body><main><a id="brand" href="../../" aria-label="CRATE JUICE home"></a><section class="cj-panel"><span class="cj-eyebrow">GENERATED FROM ONE FOUNDATION</span><h1>A different tool.<br>The same family.</h1><p>This small, working counter uses the same brand module, design tokens, font and buttons as JuiceWeaver. Its application logic stays separate.</p><output id="count" aria-live="polite">0</output><button id="tap" class="cj-button primary">Add a beat</button></section></main><script type="module" src="./app.js"></script></body></html>`);
+await writeFile(resolve(output,'app.js'),`import config from './config.js';\nimport {applyBrand,mountBrand} from '../../foundation/brand.js';\napplyBrand(config);mountBrand(document.querySelector('#brand'),config);\nlet count=0;document.querySelector('#tap').addEventListener('click',()=>document.querySelector('#count').textContent=++count);\n`);
+console.log(output);

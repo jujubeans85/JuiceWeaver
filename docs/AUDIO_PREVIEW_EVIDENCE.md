@@ -1,0 +1,80 @@
+# Native audio prototype evidence
+
+Captured 15 September 2026 from https://jujubeans85.github.io/JuiceWeaver/preview/tests/audio-proof.html at preview parent release 4cfc85cd48feb78ba45308e451a2b96b3847f2c7.
+Browser: cloud Chrome 151. Not physical iOS verification. Re-run after final engine changes.
+
+```text
+- heading "Audio proof" [level=1]
+- paragraph: Real browser AudioContext and OfflineAudioContext checks. The test briefly plays quiet impulses, then renders an original demo for download. This does not certify iPhone hardware or listening quality.
+- button "Run audio proof"
+- status: 15/15 passed. All audio checks passed.
+- table:
+  - rowgroup:
+    - row "Check Result Evidence":
+      - columnheader "Check"
+      - columnheader "Result"
+      - columnheader "Evidence"
+  - rowgroup:
+    - row "Actual browser audio context PASS 48000 Hz; running; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36":
+      - cell "Actual browser audio context"
+      - cell "PASS"
+      - cell "48000 Hz; running; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    - row "Offline stem alignment and polarity cancellation PASS Two opposite impulses cancel to peak 0; all sources start at sample zero.":
+      - cell "Offline stem alignment and polarity cancellation"
+      - cell "PASS"
+      - cell "Two opposite impulses cancel to peak 0; all sources start at sample zero."
+    - row "Mute and solo exclude the correct stems PASS Mute peak 0.176777 = solo peak 0.176777; muted solo is silent.":
+      - cell "Mute and solo exclude the correct stems"
+      - cell "PASS"
+      - cell "Mute peak 0.176777 = solo peak 0.176777; muted solo is silent."
+    - row "Stereo pan preserves channel isolation PASS Hard-left peak 0.250008; right channel 0.000000.":
+      - cell "Stereo pan preserves channel isolation"
+      - cell "PASS"
+      - cell "Hard-left peak 0.250008; right channel 0.000000."
+    - row "WAV header, duration and decode round trip PASS 57644 bytes; stereo 16-bit 48 kHz; 0.300 s; peak difference < 1 PCM16 step.":
+      - cell "WAV header, duration and decode round trip"
+      - cell "PASS"
+      - cell "57644 bytes; stereo 16-bit 48 kHz; 0.300 s; peak difference < 1 PCM16 step."
+    - row "EQ, drive and space change the audible output PASS Dry 0.0707; low EQ 0.2273; drive 0.1388; room tail 0.0231 and exactly +2 s.":
+      - cell "EQ, drive and space change the audible output"
+      - cell "PASS"
+      - cell "Dry 0.0707; low EQ 0.2273; drive 0.1388; room tail 0.0231 and exactly +2 s."
+    - row "Clipping is reported; optional peak protection never boosts quiet mixes PASS Unprotected peak 1.3435; protected peak 0.9800; quiet-mix gain remains exactly 1.":
+      - cell "Clipping is reported; optional peak protection never boosts quiet mixes"
+      - cell "PASS"
+      - cell "Unprotected peak 1.3435; protected peak 0.9800; quiet-mix gain remains exactly 1."
+    - row "Malformed audio fails with an actionable error PASS This audio file could not be decoded. Try a PCM WAV, MP3, M4A or another format supported by your browser.":
+      - cell "Malformed audio fails with an actionable error"
+      - cell "PASS"
+      - cell "This audio file could not be decoded. Try a PCM WAV, MP3, M4A or another format supported by your browser."
+    - row "Overlong input is rejected before native decoding; invalid PCM never plays PASS 181 s PCM rejected with zero native decode calls; NaN samples rejected before graph creation.":
+      - cell "Overlong input is rejected before native decoding; invalid PCM never plays"
+      - cell "PASS"
+      - cell "181 s PCM rejected with zero native decode calls; NaN samples rejected before graph creation."
+    - row "Realtime stems use one clock, including shorter-stem loops PASS 7 scheduled source starts; next loop shares exact timestamp 0.695667; short stem waits for the master boundary.":
+      - cell "Realtime stems use one clock, including shorter-stem loops"
+      - cell "PASS"
+      - cell "7 scheduled source starts; next loop shares exact timestamp 0.695667; short stem waits for the master boundary."
+    - row "Sub-second loops use bounded native playback; seeking to a non-loop end stops PASS Two sources share the 0.3 s native loop boundary; the short stem is zero-padded. Non-loop end remains stopped.":
+      - cell "Sub-second loops use bounded native playback; seeking to a non-loop end stops"
+      - cell "PASS"
+      - cell "Two sources share the 0.3 s native loop boundary; the short stem is zero-padded. Non-loop end remains stopped."
+    - row "Adding or removing room while playing updates the non-loop tail PASS Room added during playback survives past the original dry end; removing it ends the remaining tail.":
+      - cell "Adding or removing room while playing updates the non-loop tail"
+      - cell "PASS"
+      - cell "Room added during playback survives past the original dry end; removing it ends the remaining tail."
+    - 'row "Interruptions pause; resume never restarts audio by surprise PASS State events: play, interrupted, stop. Playback requires another explicit Play."':
+      - cell "Interruptions pause; resume never restarts audio by surprise"
+      - cell "PASS"
+      - 'cell "State events: play, interrupted, stop. Playback requires another explicit Play."'
+    - row "Stop cancels a pending play request PASS Pending unlock/play was invalidated; engine stayed stopped.":
+      - cell "Stop cancels a pending play request"
+      - cell "PASS"
+      - cell "Pending unlock/play was invalidated; engine stayed stopped."
+    - row "Original four-stem demo exports within the declared limits PASS 4 original stems; 88 BPM; 8 bars; 23.818 s including tail; peak 0.2598; 28.0 MiB decoded / 14.0 MiB original WAVs.":
+      - cell "Original four-stem demo exports within the declared limits"
+      - cell "PASS"
+      - cell "4 original stems; 88 BPM; 8 bars; 23.818 s including tail; peak 0.2598; 28.0 MiB decoded / 14.0 MiB original WAVs."
+- link "Download the rendered demo WAV":
+  - /url: blob:https://jujubeans85.github.io/a9c336b7-c0f0-48e2-a611-75ec3722b053
+```

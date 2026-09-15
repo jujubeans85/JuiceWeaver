@@ -1,0 +1,6 @@
+{
+  "name":"crate-juice-juiceweaver","version":"1.0.0-rc.1","private":true,"type":"module",
+  "description":"CRATE JUICE's local stem studio and reusable application foundation",
+  "engines":{"node":">=24 <25"},
+  "scripts":{"test":"node --test tests/*.test.mjs tests/core*.mjs","build":"node scripts/build.mjs","check":"node scripts/check.mjs","scaffold":"node scripts/scaffold.mjs","dev":"node scripts/serve.mjs"}
+}
