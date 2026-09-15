@@ -10,7 +10,7 @@ Canonical URL: https://juiceweaver.netlify.app/
 
 This iteration adds per-stem timbre and rhythmic glitch, six stem presets, optional 50% wider effect ranges, a warmer and more transparent carriage/glass treatment, and matching crate/JW app and Home Screen artwork. It preserves original source audio and local processing.
 
-Independent source, native audio, workflow and visual review approves publication of an explicitly labelled release candidate. The canonical deployed fingerprint must be verified after publication. This is not physical-device certification or a promise of flawless software or commercial success.
+Independent source, native audio, workflow and visual review approves publication of an explicitly labelled release candidate. The canonical deployed fingerprint and browser smoke checks passed after publication. This is not physical-device certification or a promise of flawless software or commercial success.
 
 ## Scorecard
 
@@ -68,7 +68,7 @@ An actual UI WAV download was also inspected: 192,044 bytes, stereo 48 kHz PCM16
 6. Controls, presets, project persistence, prompt reset and UI reset include both new effects. Source audio stays intact.
 7. Home Screen PNGs and the in-app corner mark use the same crate/JW artwork. Actual installed icon refresh remains device-dependent and unverified.
 
-## Final release gates — complete
+## Release-candidate gates — complete
 
 - **Final native audio proof:** 21/21 passed on the approved numeric-repeatability fixture under the staged `/preview/tests/audio-proof.html` path. App fingerprint is recorded above; the source commit below identifies the published fixture.
 - **Final native recovery proof:** 12/12 passed and reobserved on staged RC2 under `/preview/tests/core-browser.html`.
