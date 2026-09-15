@@ -4,7 +4,7 @@
 
 JuiceWeaver is a local stem studio: bring separate audio parts, shape the mix, save an editable project and export a WAV. It also establishes the shared CRATE JUICE design and engineering foundation for future tools.
 
-[Open JuiceWeaver](https://jujubeans85.github.io/JuiceWeaver/) · **1.0.0-rc.1 — evaluation release candidate**
+[Open JuiceWeaver](https://juiceweaver.netlify.app/) · **1.0.0-rc.1 — evaluation release candidate**
 
 Physical iPhone/iPad verification remains outstanding. This is an evaluation build, not a certified commercial release. Earlier “3.0” documentation described capabilities that were not implemented; this README describes the current code.
 
@@ -61,10 +61,16 @@ npm run scaffold -- my-next-tool
 
 This creates a small working example under `examples/my-next-tool/`, sharing `foundation/brand.js` and `foundation/tokens.css`. Give it its own configuration and application logic. JuiceWeaver identity lives in `src/config.js`; audio and project logic stay in their own modules. Follow [AGENTS.md](AGENTS.md) for the release and review contract.
 
-Run the browser proof pages through the local server: [audio](http://localhost:8765/tests/audio-proof.html) and [projects/storage](http://localhost:8765/tests/core-browser.html). The [captured audio prototype evidence](docs/AUDIO_PREVIEW_EVIDENCE.md) identifies its exact preview version and browser; it does not certify subsequent edits or physical iOS behaviour. See [audio architecture](src/audio/README.md) for the DSP/API details.
+Run the browser proof pages through the local server: [audio](http://localhost:8765/tests/audio-proof.html) and [projects/storage](http://localhost:8765/tests/core-browser.html). The [native browser evidence](docs/NATIVE_BROWSER_EVIDENCE.md), [studio workflow results](docs/UI_WORKFLOW_EVIDENCE.md) and [final deployment checks](docs/RELEASE_EVIDENCE.md) identify their exact artifacts and evidence boundaries. See [audio architecture](src/audio/README.md) for the DSP/API details.
 
 ## Hosting
 
-The Pages link is for evaluation. GitHub Pages restricts commercial SaaS and sites primarily facilitating transactions; commercial launch needs suitable hosting and the remaining release gates. [GitHub's current Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+The canonical application link is **https://juiceweaver.netlify.app/**. It uses the existing Netlify site; this release does not change its plan or billing settings. Netlify runs tests and checks before building the published `dist/` output.
+
+This release was published through the connected Netlify deployment tool. Do not assume a future GitHub merge automatically republishes that site. For each release, run the checks/build, deploy to the existing site, verify its `release.json` fingerprint and retain the preceding deployment for rollback.
+
+Recovery is local to each origin. To move an existing session from Pages or the old preview, save a `.juice` backup there and open that file on the new site. Hosting changes do not transfer recovery automatically.
+
+[GitHub Pages](https://jujubeans85.github.io/JuiceWeaver/) remains an evaluation fallback. GitHub Pages restricts commercial SaaS and sites primarily facilitating transactions; the Netlify deployment supplies suitable application hosting, while the remaining device and owner release decisions are still outstanding. [GitHub's current Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
 
 No project software licence or trademark clearance is granted by this README. Those owner decisions remain separate from implementation.

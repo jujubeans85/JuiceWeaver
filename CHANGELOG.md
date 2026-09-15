@@ -22,13 +22,14 @@ A functional rebuild of JuiceWeaver and the first reusable CRATE JUICE applicati
 - Pause/stop cancel pending playback. Context interruptions require an explicit Play to resume.
 - Room changes reschedule the non-loop tail. Switching Loop off after a complete cycle preserves the current playhead.
 - Documentation now matches the working application, including its limits and deferred features.
+- Netlify serves the canonical application with explicit headers; missing pages return to the canonical root. The offline request list excludes GitHub-only control files; build-generator changes update the release fingerprint.
 
 ### Evidence and remaining gates
 
-The [audio prototype](docs/AUDIO_PREVIEW_EVIDENCE.md) passed 15 real-browser audio checks at the version recorded there. A subsequent transport fix adds a 16th regression; rerun the current browser suite for current-release evidence. Unit tests and browser evidence serve different purposes.
+The fully exercised preview passed **16 native audio checks and 10 isolated IndexedDB checks**, alongside 33 Node tests. The canonical Netlify host also passed real project/WAV downloads, picker restore and focused deployment checks. [Release evidence](docs/RELEASE_EVIDENCE.md) identifies the exact artifact for each result. Physical-device results are separate.
 
 Physical iPhone/iPad import, playback, interruption, project recovery and download verification remain required. Browser emulation does not satisfy that gate. This build remains an evaluation release candidate.
 
 ### Deferred
 
-Built-in source separation, prompt-generated layers, AI-provider/model integrations, time stretching, lock-screen transport and native AirDrop/Messages sharing. The obsolete “lite split”, Sonic Postcard, sign-in/sync and PrivateForge instructions are removed. Commercial hosting and owner legal choices remain separate release decisions.
+Built-in source separation, prompt-generated layers, AI-provider/model integrations, time stretching, lock-screen transport and native AirDrop/Messages sharing. The obsolete “lite split”, Sonic Postcard, sign-in/sync and PrivateForge instructions are removed. Canonical hosting is the existing Netlify site; physical-device acceptance and owner legal choices remain separate release decisions.
