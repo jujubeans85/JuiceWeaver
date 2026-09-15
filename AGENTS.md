@@ -16,6 +16,8 @@ Owner-approved brief: 15 September 2026. Initial delivery may be an explicitly l
 
 ## Autonomous work and proportionate checks
 
+Scope clarification, 15 September 2026: these autonomous approvals cover iPhone and iPad web-app delivery only. They grant no approval for Mac software, Mac configuration, desktop-system changes or cross-device integration. Such work requires its own authorization. Existing cloud repository/build/hosting operations necessary for the approved iOS app remain in scope.
+
 Owner amendment, 15 September 2026: minimize interruptions and elapsed time while retaining meaningful quality control. No separate review attachment is required for the current requested work.
 
 - Routine reversible fixes, styling, tests, commits, pull requests and releases within the approved app scope are already authorized. Do the work and report the result; do not request repeated approval.
@@ -27,3 +29,4 @@ Owner amendment, 15 September 2026: minimize interruptions and elapsed time whil
 - Ask the owner only when a consequential decision is outside existing authorization: spending, legal commitments, new sensitive-data transfers or expanded access, destructive actions, or a material tradeoff in the requested outcome. Batch such decisions and provide a recommendation plus a concrete reviewable result. Honor any mandatory platform approval.
 - Preserve project data and rollback capability. Do not clear storage or reinstall an app simply to update it. Brief handoffs should say what changed, what was checked, what remains uncertain, and whether it is live.
 - Approval of the current work does not select unspecified repository deletion/merger options. Other repositories remain read-only until a concrete sweep is authorized.
+
