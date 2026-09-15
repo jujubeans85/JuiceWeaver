@@ -4,7 +4,7 @@
 
 JuiceWeaver is a local stem studio: bring separate audio parts, shape the mix, save an editable project and export a WAV. It also establishes the shared CRATE JUICE design and engineering foundation for future tools.
 
-[Open JuiceWeaver](https://juiceweaver.netlify.app/) · **1.0.0-rc.2 — evaluation release candidate**
+[Open JuiceWeaver](https://juiceweaver.netlify.app/) · **1.0.0-rc.3 — evaluation release candidate**
 
 The owner reports all RC1 functions passed on their iOS phone. iPad testing remains pending; the newly added RC2 effects and icon still need their own device pass. This is an evaluation build, not a certified commercial release. Earlier “3.0” documentation described capabilities that were not implemented; this README describes the current code.
 
@@ -85,3 +85,7 @@ Recovery is local to each origin. To move an existing session from Pages or the 
 [GitHub Pages](https://jujubeans85.github.io/JuiceWeaver/) remains an evaluation fallback. GitHub Pages restricts commercial SaaS and sites primarily facilitating transactions; the Netlify deployment supplies suitable application hosting, while the remaining device and owner release decisions are still outstanding. [GitHub's current Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
 
 No project software licence or trademark clearance is granted by this README. Those owner decisions remain separate from implementation.
+
+## RC3 touch and import update
+
+File import no longer waits for playback permission after the system file picker. Playback starts only with Play. Effects, stem levels and output now have larger rails, exact-step minus/plus buttons and a Reset button. Double-tap the displayed value to reset it. Bipolar controls show a zero marker. Default output reset is -6 dB; effect and stem-level resets are zero. Changes remain undoable. Function panels have lighter warm glass with brighter labels. The owner confirms Home Screen installation; the new import/control fix still needs an on-device check.

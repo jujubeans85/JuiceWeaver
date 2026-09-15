@@ -11,6 +11,7 @@ import { createRecoveryStore } from './core/storage.js';
 import { interpretPrompt, PROMPT_EXAMPLES } from './core/prompts.js';
 import { assetSize, checkedDecode, probeAudio } from './imports.js';
 import { drawWaveform, secondsLabel } from './waveform.js';
+import { enhanceSlider, refreshSlider } from './ui/slider.js';
 
 const $ = id => document.getElementById(id);
 const engine = new JuiceEngine();
@@ -72,6 +73,7 @@ function attachSlider(input, apply, description){
   input.addEventListener('input',()=>{before??=snapshot();preview=null;$('prompt-preview').hidden=true;apply(Number(input.value));rangeFill(input);engine.update(session,assets);});
   const finish=()=>{const initial=before;before=null;if(initial)record(initial,description());};
   input.addEventListener('change',finish);input.addEventListener('blur',finish);
+  enhanceSlider(input,{neutral:input.id==='master-volume'?-6:0});
 }
 function selectTrack(id){selected=id;for(const [key,{row}]of rowCanvases)row.classList.toggle('selected',key===id);renderInspector();}
 function renderTracks(){
@@ -86,7 +88,7 @@ function renderTracks(){
     for(const [key,label,letter]of [['mute','Mute','M'],['solo','Solo','S']]){const button=actionButton(`${label} ${track.name}`,'stem-toggle',letter,()=>{const before=snapshot();track[key]=!track[key];record(before,`${track[key]?label:`Clear ${label.toLowerCase()}`} ${track.name}`);});button.id=`${key}-${track.id}`;button.setAttribute('aria-pressed',String(track[key]));actions.append(button);}
     actions.append(actionButton(`Remove ${track.name}`,'stem-remove',icon('remove'),()=>{const before=snapshot();engine.pause();session.tracks=session.tracks.filter(t=>t.id!==track.id);if(!session.tracks.some(t=>t.assetId===track.assetId))assets.delete(track.assetId);selected=session.tracks[0]?.id||null;record(before,`Removed ${track.name}`);message('Stem removed. Undo brings it back.');}));header.append(actions);row.append(header);
     const body=textNode('div','stem-body'),level=textNode('div','stem-volume'),label=textNode('label','');label.htmlFor=`level-${track.id}`;const output=textNode('output','stem-gain-value',`${track.gainDb} dB`);label.append(textNode('span','','Level'),output);
-    const slider=document.createElement('input');slider.type='range';slider.min=TRACK_BOUNDS.gainDb[0];slider.max=TRACK_BOUNDS.gainDb[1];slider.step='.5';slider.value=track.gainDb;slider.id=label.htmlFor;slider.setAttribute('aria-label',`${track.name} level in decibels`);attachSlider(slider,value=>{track.gainDb=value;output.textContent=`${value} dB`;},()=>`${track.name} level ${track.gainDb} dB`);level.append(label,slider);
+    const slider=document.createElement('input');slider.type='range';slider.min=TRACK_BOUNDS.gainDb[0];slider.max=TRACK_BOUNDS.gainDb[1];slider.step='.5';slider.value=track.gainDb;slider.id=label.htmlFor;slider.setAttribute('aria-label',`${track.name} level in decibels`);level.append(label,slider);attachSlider(slider,value=>{track.gainDb=value;output.textContent=`${value} dB`;},()=>`${track.name} level ${track.gainDb} dB`);
     const wave=textNode('div','waveform-wrap');const canvas=document.createElement('canvas');canvas.setAttribute('aria-label',`${track.name} waveform; ${secondsLabel(asset.buffer.duration)}`);canvas.setAttribute('role','img');wave.append(canvas);body.append(level,wave);row.append(body);$('tracks').append(row);rowCanvases.set(track.id,{canvas,row,asset,colour:track.color});
   });if(focusedId&&$(focusedId))$(focusedId).focus({preventScroll:true});requestAnimationFrame(drawWaves);
 }
@@ -97,7 +99,7 @@ function renderInspector(){
   for(const input of $('tone-controls').querySelectorAll('input[data-param]')){const value=track?.[input.dataset.param]||0;const [min,max]=trackBounds(track||false)[input.dataset.param];input.min=min;input.max=max;input.value=value;$(input.id+'-value').textContent=effectLabel(input.dataset.param,value);rangeFill(input);}
   $('widen-effects').checked=track?.expanded===true;
 }
-function rangeFill(input){const min=Number(input.min),max=Number(input.max);input.style.setProperty('--range-fill',`${(Number(input.value)-min)/(max-min)*100}%`);}
+function rangeFill(input){const min=Number(input.min),max=Number(input.max);input.style.setProperty('--range-fill',`${(Number(input.value)-min)/(max-min)*100}%`);refreshSlider(input);}
 function render(){
   const loaded=session.tracks.length>0; if(document.activeElement!==$('project-name'))$('project-name').value=session.name;
   $('empty-state').hidden=loaded;$('timeline-heading').hidden=!loaded;$('stem-count').textContent=`${session.tracks.length} stems`;
@@ -118,7 +120,8 @@ async function importFiles(fileList){
   const files=Array.from(fileList);if(!files.length)return;
   if(files.length===1&&files[0].name.toLowerCase().endsWith('.juice'))return openProjectFile(files[0]);
   if(session.tracks.length+files.length>LIMITS.MAX_TRACKS)return message('There is room for up to 8 stems. Add fewer files or remove a stem first.',true);
-  await engine.unlock().catch(failure);
+  // Import does not need playback permission. A resume() after the iOS Files
+  // picker can remain pending; only an explicit Play should unlock audio.
   await task('Bringing in your stems',async()=>{
     const before=snapshot(),candidateAssets=new Map(assets),candidateTracks=[...session.tracks];let size=assetSize(candidateAssets);
     if(size.source+files.reduce((n,f)=>n+f.size,0)>LIMITS.MAX_TOTAL_SOURCE_BYTES)throw new Error('These source files exceed the 96 MiB project limit. Use shorter stems.');

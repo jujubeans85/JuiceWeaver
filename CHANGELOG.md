@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0-rc.3 — touch precision and import
+
+- Remove playback-resume dependency from file importing; retain transactional validation.
+- Larger ranges, exact-step buttons, neutral markers and double-tap displayed-value reset.
+- Lighten function panels and improve contrast; keep the existing background/icon.
+- Add repeat four-WAV decoding coverage while audio is suspended.
+
 ## 1.0.0-rc.2 — 15 September 2026
 
 - Added selected-stem Timbre and tempo-linked rhythmic Glitch, with the same live/export processing.
