@@ -9,8 +9,8 @@ Review this release independently. Challenge evidence, reproduce important outco
 - Repository: https://github.com/jujubeans85/JuiceWeaver
 - Version: `1.0.0-rc.2`.
 - Expected app fingerprint: `162a6663f36799392d0182c63a2e9e5990848390ac7d0829c8c952db82db513d`.
-- Release identity: the expected app fingerprint above; use repository publication metadata to resolve its final source commit.
-- Canonical deployment verification: **PENDING — implementing reviewer to fill before handoff**.
+- Release identity: source commit `2be1f1b5d3147a105ed46d4bfb27550768b6fa19`; subsequent review-record updates are in [PR #5](https://github.com/jujubeans85/JuiceWeaver/pull/5). Application fingerprint remains unchanged.
+- Canonical deployment verification: **PASS** — Netlify deploy `6aa8bea7070ae63c213595e5`, published 2026-09-15T03:42:56.045Z. All 41 served build files match local bytes; service worker returns no-cache. Canonical demo playback, Broken beat preset and pause passed.
 - Final native audio result: **21/21 passed**, including the approved bounded numeric-repeatability check.
 
 Verify `/release.json` and source identity before reviewing. If these disagree, identify what you actually reviewed. Read `AGENTS.md` and `docs/RC2_REVIEW.md`.
