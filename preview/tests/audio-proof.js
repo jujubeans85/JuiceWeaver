@@ -193,7 +193,26 @@ runButton.addEventListener('click', async () => {
       const repeat = new Uint8Array(await second.blob.arrayBuffer());
       assert(Number.isFinite(first.peak) && first.peak > 0 && first.exportedPeak <= 0.980001, 'Expanded mix failed finite peak protection.');
       assert(first.normalizationGain <= 1 && first.tail === 2, 'Expanded processing boosted normalization or lost room tail.');
-      assert(bytes.length === repeat.length && bytes.every((value, index) => value === repeat[index]), 'Expanded repeated WAV renders were not deterministic.');
+      const comparePCM = (a, b) => {
+        if (a.byteLength !== b.byteLength) return { lengthA: a.byteLength, lengthB: b.byteLength };
+        const left = new DataView(a.buffer, a.byteOffset, a.byteLength); const right = new DataView(b.buffer, b.byteOffset, b.byteLength);
+        let changed = 0; let maxDelta = 0; let sumSquare = 0; let firstChanged = null;
+        const count = (a.byteLength - 44) / 2;
+        for (let offset = 44; offset < a.byteLength; offset += 2) {
+          const delta = Math.abs(left.getInt16(offset, true) - right.getInt16(offset, true));
+          if (delta) { changed++; firstChanged ??= (offset - 44) / 2; }
+          maxDelta = Math.max(maxDelta, delta); sumSquare += delta * delta;
+        }
+        return { samples: count, changed, maxDelta, rmsDelta: Math.sqrt(sumSquare / count), firstChanged };
+      };
+      const difference = comparePCM(bytes, repeat);
+      if (difference.changed || difference.lengthA) {
+        for (const track of session.tracks) track.space = 0;
+        const dryA = await engine.render(session, assets, { normalize: true });
+        const dryB = await engine.render(session, assets, { normalize: true });
+        const noRoom = comparePCM(new Uint8Array(await dryA.blob.arrayBuffer()), new Uint8Array(await dryB.blob.arrayBuffer()));
+        throw new Error(`Expanded repeated WAV comparison: ${JSON.stringify({ difference, peakA: first.peak, peakB: second.peak, gainA: first.normalizationGain, gainB: second.normalizationGain, noRoom, dryPeakA: dryA.peak, dryPeakB: dryB.peak })}`);
+      }
       return `8stems at expanded extremes; rawpeak${first.peak.toFixed(3)}, protected${first.exportedPeak.toFixed(3)}; exact repeatedWAV; +2s roomtail.`;
     });
     await check('Glitch shares live start, seek and loop clocks and stops its control sources', async () => {
