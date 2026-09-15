@@ -1,0 +1,137 @@
+# Native browser proof — full studio preview
+
+Date:15 September2026. Deployed main commit5828323460cf6890cc43144a2673aa2bfc6810ab; fingerprint2e2661865808f6317c981c538d318f2f9f74c79b079f6cb29d6590898f8d5394. Browser:cloud Chrome151. Physical iOS, audio-device listening and genuine quota exhaustion are not certified.
+
+The captured DOM reports16/16 audio and10/10 storage checks. Keyboard:Space on Mute Keys set aria-pressed=true while the Play mix button remained available (transport stayed paused).
+
+```text
+- heading "Audio proof" [level=1]
+- paragraph: Real browser AudioContext and OfflineAudioContext checks. The test briefly plays quiet impulses, then renders an original demo for download. This does not certify iPhone hardware or listening quality.
+- button "Run audio proof"
+- status: 16/16 passed. All audio checks passed.
+- table:
+  - rowgroup:
+    - row "Check Result Evidence":
+      - columnheader "Check"
+      - columnheader "Result"
+      - columnheader "Evidence"
+  - rowgroup:
+    - row "Actual browser audio context PASS 48000 Hz; running; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36":
+      - cell "Actual browser audio context"
+      - cell "PASS"
+      - cell "48000 Hz; running; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    - row "Offline stem alignment and polarity cancellation PASS Two opposite impulses cancel to peak 0; all sources start at sample zero.":
+      - cell "Offline stem alignment and polarity cancellation"
+      - cell "PASS"
+      - cell "Two opposite impulses cancel to peak 0; all sources start at sample zero."
+    - row "Mute and solo exclude the correct stems PASS Mute peak 0.176777 = solo peak 0.176777; muted solo is silent.":
+      - cell "Mute and solo exclude the correct stems"
+      - cell "PASS"
+      - cell "Mute peak 0.176777 = solo peak 0.176777; muted solo is silent."
+    - row "Stereo pan preserves channel isolation PASS Hard-left peak 0.250008; right channel 0.000000.":
+      - cell "Stereo pan preserves channel isolation"
+      - cell "PASS"
+      - cell "Hard-left peak 0.250008; right channel 0.000000."
+    - row "WAV header, duration and decode round trip PASS 57644 bytes; stereo 16-bit 48 kHz; 0.300 s; peak difference < 1 PCM16 step.":
+      - cell "WAV header, duration and decode round trip"
+      - cell "PASS"
+      - cell "57644 bytes; stereo 16-bit 48 kHz; 0.300 s; peak difference < 1 PCM16 step."
+    - row "EQ, drive and space change the audible output PASS Dry 0.0707; low EQ 0.2273; drive 0.1388; room tail 0.0231 and exactly +2 s.":
+      - cell "EQ, drive and space change the audible output"
+      - cell "PASS"
+      - cell "Dry 0.0707; low EQ 0.2273; drive 0.1388; room tail 0.0231 and exactly +2 s."
+    - row "Clipping is reported; optional peak protection never boosts quiet mixes PASS Unprotected peak 1.3435; protected peak 0.9800; quiet-mix gain remains exactly 1.":
+      - cell "Clipping is reported; optional peak protection never boosts quiet mixes"
+      - cell "PASS"
+      - cell "Unprotected peak 1.3435; protected peak 0.9800; quiet-mix gain remains exactly 1."
+    - row "Malformed audio fails with an actionable error PASS This audio file could not be decoded. Try a PCM WAV, MP3, M4A or another format supported by your browser.":
+      - cell "Malformed audio fails with an actionable error"
+      - cell "PASS"
+      - cell "This audio file could not be decoded. Try a PCM WAV, MP3, M4A or another format supported by your browser."
+    - row "Overlong input is rejected before native decoding; invalid PCM never plays PASS 181 s PCM rejected with zero native decode calls; NaN samples rejected before graph creation.":
+      - cell "Overlong input is rejected before native decoding; invalid PCM never plays"
+      - cell "PASS"
+      - cell "181 s PCM rejected with zero native decode calls; NaN samples rejected before graph creation."
+    - row "Realtime stems use one clock, including shorter-stem loops PASS 7 scheduled source starts; next loop shares exact timestamp 0.767667; short stem waits for the master boundary.":
+      - cell "Realtime stems use one clock, including shorter-stem loops"
+      - cell "PASS"
+      - cell "7 scheduled source starts; next loop shares exact timestamp 0.767667; short stem waits for the master boundary."
+    - row "Sub-second loops use bounded native playback; seeking to a non-loop end stops PASS Two sources share the 0.3 s native loop boundary; the short stem is zero-padded. Non-loop end remains stopped.":
+      - cell "Sub-second loops use bounded native playback; seeking to a non-loop end stops"
+      - cell "PASS"
+      - cell "Two sources share the 0.3 s native loop boundary; the short stem is zero-padded. Non-loop end remains stopped."
+    - 'row "Disabling Loop after a full cycle preserves the current playhead PASS After at least one cycle, the same session object changed to non-loop: 0.0870 s → 0.0870 s; playback continued."':
+      - cell "Disabling Loop after a full cycle preserves the current playhead"
+      - cell "PASS"
+      - 'cell "After at least one cycle, the same session object changed to non-loop: 0.0870 s → 0.0870 s; playback continued."'
+    - row "Adding or removing room while playing updates the non-loop tail PASS Room added during playback survives past the original dry end; removing it ends the remaining tail.":
+      - cell "Adding or removing room while playing updates the non-loop tail"
+      - cell "PASS"
+      - cell "Room added during playback survives past the original dry end; removing it ends the remaining tail."
+    - 'row "Interruptions pause; resume never restarts audio by surprise PASS State events: play, interrupted, stop. Playback requires another explicit Play."':
+      - cell "Interruptions pause; resume never restarts audio by surprise"
+      - cell "PASS"
+      - 'cell "State events: play, interrupted, stop. Playback requires another explicit Play."'
+    - row "Stop cancels a pending play request PASS Pending unlock/play was invalidated; engine stayed stopped.":
+      - cell "Stop cancels a pending play request"
+      - cell "PASS"
+      - cell "Pending unlock/play was invalidated; engine stayed stopped."
+    - row "Original four-stem demo exports within the declared limits PASS 4 original stems; 88 BPM; 8 bars; 23.818 s including tail; peak 0.2599; 28.0 MiB decoded / 14.0 MiB original WAVs.":
+      - cell "Original four-stem demo exports within the declared limits"
+      - cell "PASS"
+      - cell "4 original stems; 88 BPM; 8 bars; 23.818 s including tail; peak 0.2599; 28.0 MiB decoded / 14.0 MiB original WAVs."
+- link "Download the rendered demo WAV":
+  - /url: [temporary local download] heading "Storage proof" [level=1]
+- paragraph: Real browser IndexedDB and project-integrity checks. This creates temporary, uniquely named proof databases and deletes only those databases after closing them. It never opens the application’s recovery database.
+- paragraph: Reopening a database connection is tested here. Application page-reload recovery, physical iOS behaviour and genuine quota exhaustion require their separate checks.
+- button "Run storage proof"
+- status: 10/10 checks passed. Browser storage proof complete.
+- table:
+  - rowgroup:
+    - row "Check Result Evidence":
+      - columnheader "Check"
+      - columnheader "Result"
+      - columnheader "Evidence"
+  - rowgroup:
+    - row "Actual browser storage and secure hashing PASS Real IndexedDB; HTTPS/localhost hashing; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36":
+      - cell "Actual browser storage and secure hashing"
+      - cell "PASS"
+      - cell "Real IndexedDB; HTTPS/localhost hashing; Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+    - row "Atomic save and exact original-byte recovery PASS 108 original WAV bytes restored exactly with integrity checks.":
+      - cell "Atomic save and exact original-byte recovery"
+      - cell "PASS"
+      - cell "108 original WAV bytes restored exactly with integrity checks."
+    - row "Close and reopen using a new store instance PASS Closed the first IndexedDB connection; a fresh store instance reopened the project.":
+      - cell "Close and reopen using a new store instance"
+      - cell "PASS"
+      - cell "Closed the first IndexedDB connection; a fresh store instance reopened the project."
+    - row "Rapid saves coalesce to the newest pending state PASS Three save requests completed; newest state persisted and superseded pending requests reported the actual committed snapshot.":
+      - cell "Rapid saves coalesce to the newest pending state"
+      - cell "PASS"
+      - cell "Three save requests completed; newest state persisted and superseded pending requests reported the actual committed snapshot."
+    - row "Save–clear–save preserves operation order PASS The explicit clear remained between earlier and later saves.":
+      - cell "Save–clear–save preserves operation order"
+      - cell "PASS"
+      - cell "The explicit clear remained between earlier and later saves."
+    - row "Another tab cannot silently overwrite a newer recovery PASS An atomic revision check rejected the stale write and preserved the newer project.":
+      - cell "Another tab cannot silently overwrite a newer recovery"
+      - cell "PASS"
+      - cell "An atomic revision check rejected the stale write and preserved the newer project."
+    - row "Invalid save leaves the previous recovery intact PASS Missing source bytes failed before mutation; the prior complete recovery remains readable.":
+      - cell "Invalid save leaves the previous recovery intact"
+      - cell "PASS"
+      - cell "Missing source bytes failed before mutation; the prior complete recovery remains readable."
+    - row "Clear touches only the selected application namespace PASS One proof recovery cleared; the independent sibling recovery remains intact.":
+      - cell "Clear touches only the selected application namespace"
+      - cell "PASS"
+      - cell "One proof recovery cleared; the independent sibling recovery remains intact."
+    - row "Stored payload corruption is rejected transactionally PASS A one-byte audio change failed SHA-256; no partial project was returned; explicit clear recovered cleanly.":
+      - cell "Stored payload corruption is rejected transactionally"
+      - cell "PASS"
+      - cell "A one-byte audio change failed SHA-256; no partial project was returned; explicit clear recovered cleanly."
+    - row "Close and delete only this run’s temporary databases PASS Both owned proof databases deleted after connection closure. The application recovery namespace was never accessed.":
+      - cell "Close and delete only this run’s temporary databases"
+      - cell "PASS"
+      - cell "Both owned proof databases deleted after connection closure. The application recovery namespace was never accessed."true1
+```
+
