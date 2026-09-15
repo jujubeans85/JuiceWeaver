@@ -54,7 +54,7 @@ Keep CRATE JUICE visually coherent across future apps without building unnecessa
 - An actual UI WAV download was inspected: 192,044 bytes, stereo 48 kHz PCM16, one second, peak 0.029022216796875; SHA-256 `1d0e6b831909cc04962e4b276218ff10a253d75ec03ac00cb59ac53624987a7f`. The 193,465-byte RC2 project download reopened successfully.
 - Actual browser checks exercised legacy import, preset application, per-stem widening/clamping/Undo and downloaded RC2 project reopen with retained source bytes.
 - Responsive layout: 375px usable and scroll width inside a 390px viewport, with independently reviewed desktop and narrow screenshots. This is not physical iOS evidence.
-- Both reviewers rate tested categories at least 8/10: functionality 8.5, browser usability 8.3, desktop visuals 8.4, narrow visuals 8.2, maintainability 8.3 and privacy within scope 8.5. The audio gate is closed; verify canonical deployment after publication.
+- Both reviewers rate tested categories at least 8/10: functionality 8.5, browser usability 8.3, desktop visuals 8.4, narrow visuals 8.2, maintainability 8.3 and privacy within scope 8.5. The audio and canonical deployment gates are closed; independently recheck the live fingerprint when reviewing.
 
 The owner reports the previous RC1 passed locally on their iOS phone. iPad is pending. That report does not certify this iteration's new controls or Home Screen installation. Existing commercial asset/licensing decisions remain open and outside this technical iteration.
 
