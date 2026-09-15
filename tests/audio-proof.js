@@ -123,6 +123,140 @@ runButton.addEventListener('click', async () => {
       assert(roomy.tail === 2 && Math.abs(roomy.duration - 2.25) < 1 / 48000 && tailPeak > 0.0001, 'Reverb tail is absent or wrong length.');
       return `Dry ${dry.peak.toFixed(4)}; low EQ ${equalized.peak.toFixed(4)}; drive ${driven.peak.toFixed(4)}; room tail ${tailPeak.toFixed(4)} and exactly +2 s.`;
     });
+    await check('Neutral new effects preserve RC1 impulse timing and PCM samples', async () => {
+      const { session, assets } = makeSession([impulse]);
+      session.tracks[0].pan = -1;
+      const legacy = new Uint8Array(await (await engine.render(session, assets)).blob.arrayBuffer());
+      Object.assign(session.tracks[0], { timbre: 0, glitch: 0, expanded: false });
+      const neutral = new Uint8Array(await (await engine.render(session, assets)).blob.arrayBuffer());
+      assert(legacy.length === neutral.length && legacy.every((value, index) => value === neutral[index]), 'Neutral controls changed PCM bytes.');
+      const decoded = await engine.decode(neutral.buffer);
+      const data = decoded.getChannelData(0);
+      assert(Math.abs(data[2400] - 0.25) < 0.00004, 'Neutral impulse moved or changed gain.');
+      assert(data.every((value, index) => index === 2400 || value === 0), 'Neutral filters introduced a tail or time shift.');
+      return 'Legacy absent controls and explicit zero controls produce identical WAV bytes; one impulse remains at sample2400 with no tail.';
+    });
+    await check('Timbre moves body versus presence without changing duration', async () => {
+      const tone = makeBuffer(0.6, i => 0.05 * (Math.sin(i / 48000 * 2 * Math.PI * 350) + Math.sin(i / 48000 * 2 * Math.PI * 2200)));
+      const { session, assets } = makeSession([tone]);
+      session.tracks[0].pan = -1;
+      const strength = (data, frequency) => {
+        let real = 0; let imaginary = 0;
+        for (let i = 4800; i < 24000; i++) { const phase = i / 48000 * 2 * Math.PI * frequency; real += data[i] * Math.cos(phase); imaginary += data[i] * Math.sin(phase); }
+        return Math.hypot(real, imaginary);
+      };
+      const ratio = async value => {
+        session.tracks[0].timbre = value;
+        const rendered = await engine.render(session, assets);
+        assert(Math.abs(rendered.duration - 0.6) < 1 / 48000, 'Timbre altered source duration.');
+        const data = (await engine.decode(await rendered.blob.arrayBuffer())).getChannelData(0);
+        return strength(data, 2200) / strength(data, 350);
+      };
+      const round = await ratio(-1); const neutral = await ratio(0); const forward = await ratio(1);
+      assert(round < neutral / 2 && forward > neutral * 2, 'Body/presence contrast was not clearly audible.');
+      return `Presence/body ratios: round ${round.toFixed(3)}, neutral ${neutral.toFixed(3)}, forward ${forward.toFixed(3)}; unchanged0.6s length.`;
+    });
+    await check('Glitch creates deterministic tempo-linked gaps and expansion deepens them', async () => {
+      const tone = makeBuffer(1, i => 0.1 * Math.sin(i / 48000 * 2 * Math.PI * 400));
+      const { session, assets } = makeSession([tone], { bpm: 120 });
+      Object.assign(session.tracks[0], { pan: -1, glitch: 1 });
+      const render = async () => {
+        const output = await engine.render(session, assets);
+        return (await engine.decode(await output.blob.arrayBuffer())).getChannelData(0);
+      };
+      const rms = (data, start, end) => {
+        let total = 0; const a = Math.round(start * 48000); const b = Math.round(end * 48000);
+        for (let index = a; index < b; index++) total += data[index] ** 2;
+        return Math.sqrt(total / (b - a));
+      };
+      const normal = await render();
+      const normalRatio = rms(normal, 0.29, 0.34) / rms(normal, 0.04, 0.09);
+      Object.assign(session.tracks[0], { expanded: true, glitch: 1.5 });
+      const wide = await render(); const repeat = await render();
+      const wideRatio = rms(wide, 0.29, 0.34) / rms(wide, 0.04, 0.09);
+      assert(Math.abs(normalRatio - 0.35) < 0.005 && Math.abs(wideRatio - 0.025) < 0.005, 'Gate depths did not match audible normal and expanded settings.');
+      assert(wide.every((value, index) => value === repeat[index]), 'Identical glitch renders differed.');
+      session.bpm = 60;
+      const slow = await render();
+      assert(rms(slow, 0.29, 0.34) > rms(wide, 0.29, 0.34) * 20, 'Glitch did not follow BPM.');
+      return `Closed/open RMS: normal ${normalRatio.toFixed(3)}, expanded ${wideRatio.toFixed(3)}; repeat PCM identical; halvingBPM moves the cut.`;
+    });
+    await check('Expanded combined effects render finite protected output with bounded numeric repeatability', async () => {
+      const tone = makeBuffer(0.4, i => 0.8 * (Math.sin(i / 48000 * 2 * Math.PI * 350) + Math.sin(i / 48000 * 2 * Math.PI * 2200)) / 2);
+      const { session, assets } = makeSession(Array(8).fill(tone), { bpm: 240, loop: true });
+      for (let index = 0; index < session.tracks.length; index++) Object.assign(session.tracks[index], {
+        expanded: true, lowDb: 18, highDb: 18, drive: 1.5, space: 1.5, timbre: index % 2 ? -1.5 : 1.5, glitch: 1.5, gainDb: 6,
+      });
+      const first = await engine.render(session, assets, { normalize: true });
+      const second = await engine.render(session, assets, { normalize: true });
+      const bytes = new Uint8Array(await first.blob.arrayBuffer());
+      const repeat = new Uint8Array(await second.blob.arrayBuffer());
+      assert(Number.isFinite(first.peak) && first.peak > 0 && first.exportedPeak <= 0.980001, 'Expanded mix failed finite peak protection.');
+      assert(first.normalizationGain <= 1 && first.tail === 2, 'Expanded processing boosted normalization or lost room tail.');
+      const comparePCM = (a, b) => {
+        if (a.byteLength !== b.byteLength) return { lengthA: a.byteLength, lengthB: b.byteLength };
+        const left = new DataView(a.buffer, a.byteOffset, a.byteLength); const right = new DataView(b.buffer, b.byteOffset, b.byteLength);
+        let changed = 0; let maxDelta = 0; let sumSquare = 0; let firstChanged = null;
+        const count = (a.byteLength - 44) / 2;
+        for (let offset = 44; offset < a.byteLength; offset += 2) {
+          const delta = Math.abs(left.getInt16(offset, true) - right.getInt16(offset, true));
+          if (delta) { changed++; firstChanged ??= (offset - 44) / 2; }
+          maxDelta = Math.max(maxDelta, delta); sumSquare += delta * delta;
+        }
+        return { samples: count, headersIdentical: a.subarray(0, 44).every((value, index) => value === b[index]), changed, maxDelta, rmsDelta: Math.sqrt(sumSquare / count), firstChanged };
+      };
+      const difference = comparePCM(bytes, repeat);
+      // Actual native-browser measurements showed at most one PCM16 step of
+      // variation in both wet and dry eight-stem graphs. The underlying native
+      // accumulation/rounding cause is unproven; this is numerical repeatability,
+      // not bit identity. Single-stem glitch above remains exactly repeatable.
+      const withinBounds = (comparison, a, b) => comparison.headersIdentical && comparison.maxDelta <= 1 &&
+        Math.abs(a.peak - b.peak) / Math.max(1, Math.abs(a.peak), Math.abs(b.peak)) <= 1e-6 &&
+        Math.abs(a.normalizationGain - b.normalizationGain) <= 1e-7;
+      const diagnostic = { difference, peakA: first.peak, peakB: second.peak, gainA: first.normalizationGain, gainB: second.normalizationGain };
+      let dryWithinBounds = true;
+      if (difference.changed || !withinBounds(difference, first, second)) {
+        for (const track of session.tracks) track.space = 0;
+        const dryA = await engine.render(session, assets, { normalize: true });
+        const dryB = await engine.render(session, assets, { normalize: true });
+        const noRoom = comparePCM(new Uint8Array(await dryA.blob.arrayBuffer()), new Uint8Array(await dryB.blob.arrayBuffer()));
+        Object.assign(diagnostic, { noRoom, dryPeakA: dryA.peak, dryPeakB: dryB.peak, dryGainA: dryA.normalizationGain, dryGainB: dryB.normalizationGain });
+        dryWithinBounds = withinBounds(noRoom, dryA, dryB);
+      }
+      assert(withinBounds(difference, first, second) && dryWithinBounds,
+        `Expanded WAV repeatability exceeded identical headers/frames, 1 PCM16 step, 1e-6 relative peak or 1e-7 gain: ${JSON.stringify(diagnostic)}`);
+      return `8 stems at expanded extremes; protected peak ${first.exportedPeak.toFixed(3)}; +2 s room tail. Native repeatability: ${JSON.stringify(diagnostic)}`;
+    });
+    await check('Glitch shares live start, seek and loop clocks and stops its control sources', async () => {
+      const tone = makeBuffer(0.713, () => 0);
+      const { session, assets } = makeSession([tone], { loop: true, bpm: 120, masterDb: -24 });
+      session.tracks[0].glitch = 1;
+      const original = engine.context.createBufferSource.bind(engine.context);
+      const originalBuffer = engine.context.createBuffer.bind(engine.context);
+      const starts = []; let controlsStopped = 0;
+      engine.context.createBuffer = (...args) => {
+        if (args[2] === 8000) { const until = performance.now() + 35; while (performance.now() < until) { /* Simulate slow control allocation. */ } }
+        return originalBuffer(...args);
+      };
+      engine.context.createBufferSource = () => {
+        const source = original(); const start = source.start.bind(source); const stop = source.stop.bind(source);
+        source.start = (...args) => { starts.push({ when: args[0], offset: args[1], loopEnd: source.loopEnd, rate: source.buffer.sampleRate, current: engine.context.currentTime }); return start(...args); };
+        source.stop = (...args) => { if (source.buffer?.sampleRate === 8000) controlsStopped++; return stop(...args); };
+        return source;
+      };
+      try {
+        await engine.play(session, assets, 0.3);
+        assert(starts.length === 2 && starts[0].when === starts[1].when && starts[0].offset === starts[1].offset, 'Control and audio did not share start or seek phase.');
+        assert(starts.every(start => start.when > start.current && start.loopEnd === 0.713), 'Slow construction lost the future start or exact loop boundary.');
+        engine.seek(0.51);
+        assert(starts[2].offset === 0.51 && starts[2].when === starts[3].when, 'Seek changed glitch phase relative to audio.');
+        session.bpm = 90; engine.update(session, assets);
+        assert(starts[4].offset === starts[5].offset && starts[4].when === starts[5].when, 'Tempo rebuild did not preserve shared phase.');
+        engine.stop();
+        assert(controlsStopped === 3, 'A gate source survived stop, seek or tempo rebuild.');
+        return 'Control/audio share future timestamp after simulated35ms allocation, offsets0.3/0.51, arbitrary0.713s loop; all3gate sources explicitly stopped.';
+      } finally { engine.stop(); engine.context.createBufferSource = original; engine.context.createBuffer = originalBuffer; }
+    });
     await check('Clipping is reported; optional peak protection never boosts quiet mixes', async () => {
       const loud = makeBuffer(0.1, (i) => i === 240 ? 0.95 : 0);
       const { session, assets } = makeSession([loud, loud]);

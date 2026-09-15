@@ -28,11 +28,8 @@ export const ROLE_COLORS = Object.freeze({
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 const COLOR = /^#[0-9a-fA-F]{6}$/;
-export const TRACK_BOUNDS = Object.freeze({
-  gainDb: Object.freeze([-60, 6]), pan: Object.freeze([-1, 1]),
-  lowDb: Object.freeze([-12, 12]), highDb: Object.freeze([-12, 12]),
-  drive: Object.freeze([0, 1]), space: Object.freeze([0, 1]),
-});
+export { TRACK_BOUNDS } from './effects.js';
+import { trackBounds } from './effects.js';
 export const MASTER_DB_BOUNDS = Object.freeze([-36, 0]);
 
 export class SessionError extends Error {
@@ -91,27 +88,32 @@ export function inferRole(name = '') {
   return 'other';
 }
 
-function normalizeTrack(input, index = 0) {
+function normalizeTrack(input, index = 0, legacy = false) {
   const track = record(input, `Stem ${index + 1}`);
   const role = track.role;
   if (!ROLES.includes(role)) throw new SessionError(`Stem ${index + 1} has an unsupported role.`);
   if (typeof track.color !== 'string' || !COLOR.test(track.color)) {
     throw new SessionError(`Stem ${index + 1} needs a six-digit hex colour.`);
   }
+  const expanded = legacy ? false : boolean(track.expanded, 'Expanded effect ranges');
+  const bounds = trackBounds(expanded);
   const result = {
     id: safeId(track.id, 'Stem ID'),
     assetId: safeId(track.assetId, 'Audio ID'),
     name: cleanText(track.name, 'Stem name'),
     role,
     color: track.color.toLowerCase(),
-    gainDb: finite(track.gainDb, 'Stem gain', ...TRACK_BOUNDS.gainDb),
-    pan: finite(track.pan, 'Pan', ...TRACK_BOUNDS.pan),
+    gainDb: finite(track.gainDb, 'Stem gain', ...bounds.gainDb),
+    pan: finite(track.pan, 'Pan', ...bounds.pan),
     mute: boolean(track.mute, 'Mute'),
     solo: boolean(track.solo, 'Solo'),
-    lowDb: finite(track.lowDb, 'Bass EQ', ...TRACK_BOUNDS.lowDb),
-    highDb: finite(track.highDb, 'Treble EQ', ...TRACK_BOUNDS.highDb),
-    drive: finite(track.drive, 'Drive', ...TRACK_BOUNDS.drive),
-    space: finite(track.space, 'Space', ...TRACK_BOUNDS.space),
+    lowDb: finite(track.lowDb, 'Bass EQ', ...bounds.lowDb),
+    highDb: finite(track.highDb, 'Treble EQ', ...bounds.highDb),
+    drive: finite(track.drive, 'Drive', ...bounds.drive),
+    space: finite(track.space, 'Space', ...bounds.space),
+    timbre: finite(legacy ? 0 : track.timbre, 'Timbre', ...bounds.timbre),
+    glitch: finite(legacy ? 0 : track.glitch, 'Glitch', ...bounds.glitch),
+    expanded,
   };
   return result;
 }
@@ -134,13 +136,16 @@ export function newTrack(options = {}) {
     highDb: options.highDb ?? 0,
     drive: options.drive ?? 0,
     space: options.space ?? 0,
+    timbre: options.timbre ?? 0,
+    glitch: options.glitch ?? 0,
+    expanded: options.expanded ?? false,
   });
 }
 
 export function newSession(options = {}) {
   record(options, 'Session options');
   return validateSession({
-    schema: 1,
+    schema: 2,
     id: options.id ?? makeId('session'),
     name: options.name ?? 'Untitled session',
     bpm: options.bpm ?? 88,
@@ -153,12 +158,12 @@ export function newSession(options = {}) {
 
 export function validateSession(input) {
   const source = record(input, 'Session');
-  if (source.schema !== 1) throw new SessionError('This project uses an unsupported session version.');
+  if (![1, 2].includes(source.schema)) throw new SessionError('This project uses an unsupported session version.');
   if (!Array.isArray(source.tracks) || source.tracks.length > LIMITS.MAX_TRACKS) {
     throw new SessionError(`A session can contain up to ${LIMITS.MAX_TRACKS} stems.`);
   }
   if (!Array.isArray(source.journal)) throw new SessionError('The session history is invalid.');
-  const tracks = source.tracks.map(normalizeTrack);
+  const tracks = source.tracks.map((track, index) => normalizeTrack(track, index, source.schema === 1));
   if (new Set(tracks.map(track => track.id)).size !== tracks.length) {
     throw new SessionError('The project contains duplicate stem IDs.');
   }
@@ -171,7 +176,7 @@ export function validateSession(input) {
     return { at: new Date(item.at).toISOString(), text: cleanText(item.text, 'History entry', 280) };
   });
   return {
-    schema: 1,
+    schema: 2,
     id: safeId(source.id, 'Session ID'),
     name: cleanText(source.name, 'Session name'),
     bpm: finite(source.bpm, 'Tempo', LIMITS.MIN_BPM, LIMITS.MAX_BPM),

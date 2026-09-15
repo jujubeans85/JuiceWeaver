@@ -95,7 +95,7 @@ export async function encodeProject(session, assets) {
       });
     }
     const manifest = new TextEncoder().encode(JSON.stringify({
-      format: FORMAT, version: 1, session: snapshot, assets: descriptors,
+      format: FORMAT, version: 2, session: snapshot, assets: descriptors,
     }));
     if (manifest.byteLength > LIMITS.MAX_MANIFEST_BYTES) throw new ProjectError('This project’s metadata is too large.');
     const header = new ArrayBuffer(HEADER_SIZE);
@@ -129,7 +129,8 @@ export async function decodeProject(arrayBuffer) {
       manifest = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(HEADER_SIZE, HEADER_SIZE + manifestLength)));
     } catch (cause) { throw new ProjectError('This project’s metadata is damaged.', { cause }); }
     requireRecord(manifest, 'Project manifest');
-    if (manifest.format !== FORMAT || manifest.version !== 1) throw new ProjectError('This project uses an unsupported file version.');
+    if (manifest.format !== FORMAT || ![1, 2].includes(manifest.version)) throw new ProjectError('This project uses an unsupported file version.');
+    if (manifest.session?.schema !== manifest.version) throw new ProjectError('Project file and session versions do not match.');
     const session = validateSession(manifest.session);
     if (!Array.isArray(manifest.assets) || manifest.assets.length > LIMITS.MAX_ASSETS) {
       throw new ProjectError('This project has too many or invalid audio sources.');

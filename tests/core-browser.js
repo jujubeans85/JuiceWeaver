@@ -137,6 +137,49 @@ runButton.addEventListener('click', async () => {
       return 'One proof recovery cleared; the independent sibling recovery remains intact.';
     });
 
+    await check('RC1 stored archive migrates with exact original audio and neutral new effects', async () => {
+      await store.saveRecovery(makeSession('Legacy recovery'), assets);
+      const db = await ownedDatabase(base);
+      try {
+        const saved = await new Promise((resolve, reject) => {
+          const tx = db.transaction('recovery', 'readonly'); const request = tx.objectStore('recovery').get('latest');
+          tx.oncomplete = () => resolve(request.result); tx.onerror = () => reject(tx.error);
+        });
+        const source = await saved.archive.arrayBuffer();
+        const view = new DataView(source); const manifestLength = view.getUint32(4, true);
+        const manifest = JSON.parse(new TextDecoder().decode(new Uint8Array(source, 12, manifestLength)));
+        manifest.version = 1; manifest.session.schema = 1;
+        for (const track of manifest.session.tracks) { delete track.timbre; delete track.glitch; delete track.expanded; }
+        const metadata = new TextEncoder().encode(JSON.stringify(manifest));
+        const header = source.slice(0, 12); new DataView(header).setUint32(4, metadata.byteLength, true);
+        const archive = new Blob([header, metadata, source.slice(12 + manifestLength)]);
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('recovery', 'readwrite'); tx.objectStore('recovery').put({ ...saved, archive });
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error || new Error('Legacy fixture write aborted.'));
+        });
+      } finally { db.close(); }
+      await store.close(); store = makeStore(base);
+      const loaded = await store.loadRecovery();
+      assert(loaded.session.schema === 2 && loaded.session.name === 'Legacy recovery', 'Legacy recovery failed schema migration.');
+      const track = loaded.session.tracks[0];
+      assert(track.timbre === 0 && track.glitch === 0 && track.expanded === false, 'Legacy recovery gained non-neutral effects.');
+      const bytes = new Uint8Array(loaded.assets.get('proof-audio').bytes);
+      assert(bytes.every((value, index) => value === new Uint8Array(original)[index]), 'Legacy recovery altered original samples.');
+      return 'Real version1 archive record reopened through a fresh IndexedDB connection; migrated to schema2 with neutral controls and exact original bytes.';
+    });
+    await check('Expanded sound persists across recovery close and reopen', async () => {
+      const session = makeSession('Expanded recovery');
+      Object.assign(session.tracks[0], { expanded: true, timbre: -1.5, glitch: 1.5, lowDb: -18, highDb: 18, drive: 1.5, space: 1.5 });
+      await store.saveRecovery(session, assets); await store.close(); store = makeStore(base);
+      const loaded = await store.loadRecovery();
+      assert(JSON.stringify(loaded.session) === JSON.stringify(session), 'Recovery changed expanded control values.');
+      const invalid = makeSession('Invalid new control'); invalid.tracks[0].glitch = null;
+      let failure;
+      try { await store.saveRecovery(invalid, assets); } catch (error) { failure = error; }
+      assert(failure && (await store.loadRecovery()).session.name === 'Expanded recovery', 'Invalid control damaged existing recovery.');
+      return 'All six expanded effects and range choice restored exactly; malformed glitch control refused while the prior recovery remained intact.';
+    });
+
     await check('Stored payload corruption is rejected transactionally', async () => {
       await store.saveRecovery(makeSession('Before corruption'), assets);
       const db = await ownedDatabase(base);

@@ -168,7 +168,7 @@ export async function createDemo(engine) {
     tracks.push({
       id: specification.id, assetId, name: specification.name, role: specification.role,
       color: specification.color, gainDb: specification.gainDb, pan: 0, mute: false,
-      solo: false, lowDb: 0, highDb: 0, drive: 0, space: specification.space,
+      solo: false, lowDb: 0, highDb: 0, drive: 0, space: specification.space, timbre: 0, glitch: 0, expanded: false,
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
   }

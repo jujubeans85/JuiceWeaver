@@ -108,7 +108,7 @@ test('malformed manifests and invalid UTF-8 cannot produce a partial session', a
   bytes[12] = 0xff;
   await assert.rejects(decodeProject(bytes.buffer), /metadata is damaged/);
   const { manifest, payload } = unpack(await archive());
-  manifest.version = 2;
+  manifest.version = 99;
   await assert.rejects(decodeProject(pack(manifest, payload)), /unsupported file version/);
 });
 
@@ -149,4 +149,26 @@ test('remote audio descriptors, executable media types and malformed checksums a
   ({ manifest, payload } = unpack(await archive()));
   manifest.assets[0].sha256 = 'invalid';
   await assert.rejects(decodeProject(pack(manifest, payload)), /integrity checksum/);
+});
+
+test('RC1 archive opens with neutral new controls and RC2 preserves expanded sound exactly', async () => {
+  const { session, assets } = example();
+  const { manifest, payload } = unpack(await (await encodeProject(session, assets)).arrayBuffer());
+  manifest.version = 1; manifest.session.schema = 1;
+  for (const track of manifest.session.tracks) { delete track.timbre; delete track.glitch; delete track.expanded; }
+  const oldBytes = pack(manifest, payload);
+  const upgraded = await decodeProject(oldBytes);
+  assert.equal(upgraded.session.schema, 2);
+  assert.equal(upgraded.session.tracks[0].timbre, 0);
+  assert.equal(upgraded.session.tracks[0].glitch, 0);
+  assert.equal(upgraded.session.tracks[0].expanded, false);
+  for (const [id, asset] of assets) assert.deepEqual(upgraded.assets.get(id).bytes, asset.bytes);
+  Object.assign(upgraded.session.tracks[0], { expanded: true, timbre: -1.5, glitch: 1.5, drive: 1.5, space: 1.5, lowDb: -18, highDb: 18 });
+  const newBytes = await (await encodeProject(upgraded.session, upgraded.assets)).arrayBuffer();
+  assert.equal(unpack(newBytes).manifest.version, 2, 'old readers explicitly reject the new file version');
+  assert.deepEqual((await decodeProject(newBytes)).session, upgraded.session);
+  const broken = oldBytes.slice(0); new Uint8Array(broken)[broken.byteLength - 1] ^= 1;
+  await assert.rejects(decodeProject(broken), /integrity check/);
+  const mismatch = unpack(newBytes); mismatch.manifest.version = 1;
+  await assert.rejects(decodeProject(pack(mismatch.manifest, mismatch.payload)), /versions do not match/);
 });

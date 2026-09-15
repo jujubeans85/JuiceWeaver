@@ -1,11 +1,16 @@
 /** Local, deterministic command mapping. No AI model, network or generated claims. */
-import { validateSession, TRACK_BOUNDS, MASTER_DB_BOUNDS } from './model.js';
+import { validateSession, MASTER_DB_BOUNDS } from './model.js';
+import { trackBounds } from './effects.js';
 
 export const PROMPT_EXAMPLES = Object.freeze([
-  'Warm the mix', 'More space', 'Less space', 'Brighter drums', 'Softer keys',
+  'Warm the mix', 'More space', 'Less space', 'Brighter drums', 'Softer keys', 'More glitch', 'Rounder timbre',
 ]);
 
 const ACTIONS = [
+  ['glitchUp', /\b(?:(?:more|add)\s+glitch|glitchier)\b/g],
+  ['glitchDown', /\b(?:(?:less|reduce)\s+glitch)\b/g],
+  ['timbreRound', /\b(?:rounder|darker)\s+timbre\b/g],
+  ['timbreForward', /\b(?:forward|clearer)\s+timbre\b/g],
   ['reset', /\b(?:reset|clear)\s+(?:the\s+)?(?:fx|effects)\b/g],
   ['unmute', /\bunmute\b/g],
   ['mute', /\bmute\b/g],
@@ -13,7 +18,7 @@ const ACTIONS = [
   ['solo', /\bsolo\b/g],
   ['warm', /\b(?:warm|warmer)\b/g],
   ['bright', /\b(?:brighter|brighten)\b/g],
-  ['dark', /\b(?:darker|darken)\b/g],
+  ['dark', /\b(?:darker|darken)\b(?!\s+timbre)/g],
   ['spaceUp', /\b(?:(?:more|add)\s+(?:space|reverb)|wetter)\b/g],
   ['spaceDown', /\b(?:(?:less|reduce)\s+(?:space|reverb)|drier|dryer)\b/g],
   ['louder', /\b(?:louder|turn\s+up|increase\s+(?:the\s+)?volume)\b/g],
@@ -60,6 +65,8 @@ function targetsFor(target, session) {
 }
 
 const DESCRIPTIONS = {
+  glitchUp: 'Add rhythmic glitch (+15%)', glitchDown: 'Reduce rhythmic glitch (−15%)',
+  timbreRound: 'Rounder timbre (−15%)', timbreForward: 'Forward timbre (+15%)',
   reset: 'Reset effects', unmute: 'Unmute', mute: 'Mute', unsolo: 'Clear solo', solo: 'Solo',
   warm: 'Add warmth (+1.5 dB bass, −1.5 dB treble, +8% drive)',
   bright: 'Brighten (+2 dB treble)', dark: 'Darken (−2 dB treble)',
@@ -99,18 +106,23 @@ export function interpretPrompt(text, inputSession) {
   const selected = new Set(resolved.tracks.map(track => track.id));
   const changes = [];
   for (const track of session.tracks) {
+    const bounds = trackBounds(track);
     let patch = {};
     if (match.action === 'solo' && !selected.has(track.id)) patch = { solo: false };
     else if (!selected.has(track.id)) continue;
     else switch (match.action) {
-      case 'reset': patch = { lowDb: 0, highDb: 0, drive: 0, space: 0 }; break;
-      case 'warm': patch = { lowDb: clamp(track.lowDb + 1.5, ...TRACK_BOUNDS.lowDb), highDb: clamp(track.highDb - 1.5, ...TRACK_BOUNDS.highDb), drive: clamp(track.drive + 0.08, ...TRACK_BOUNDS.drive) }; break;
-      case 'bright': patch = { highDb: clamp(track.highDb + 2, ...TRACK_BOUNDS.highDb) }; break;
-      case 'dark': patch = { highDb: clamp(track.highDb - 2, ...TRACK_BOUNDS.highDb) }; break;
-      case 'spaceUp': patch = { space: clamp(track.space + 0.12, ...TRACK_BOUNDS.space) }; break;
-      case 'spaceDown': patch = { space: clamp(track.space - 0.12, ...TRACK_BOUNDS.space) }; break;
-      case 'louder': patch = { gainDb: clamp(track.gainDb + 2, ...TRACK_BOUNDS.gainDb) }; break;
-      case 'quieter': patch = { gainDb: clamp(track.gainDb - 2, ...TRACK_BOUNDS.gainDb) }; break;
+      case 'reset': patch = { lowDb: 0, highDb: 0, drive: 0, space: 0, timbre: 0, glitch: 0 }; break;
+      case 'glitchUp': patch = { glitch: clamp(track.glitch + 0.15, ...bounds.glitch) }; break;
+      case 'glitchDown': patch = { glitch: clamp(track.glitch - 0.15, ...bounds.glitch) }; break;
+      case 'timbreRound': patch = { timbre: clamp(track.timbre - 0.15, ...bounds.timbre) }; break;
+      case 'timbreForward': patch = { timbre: clamp(track.timbre + 0.15, ...bounds.timbre) }; break;
+      case 'warm': patch = { lowDb: clamp(track.lowDb + 1.5, ...bounds.lowDb), highDb: clamp(track.highDb - 1.5, ...bounds.highDb), drive: clamp(track.drive + 0.08, ...bounds.drive) }; break;
+      case 'bright': patch = { highDb: clamp(track.highDb + 2, ...bounds.highDb) }; break;
+      case 'dark': patch = { highDb: clamp(track.highDb - 2, ...bounds.highDb) }; break;
+      case 'spaceUp': patch = { space: clamp(track.space + 0.12, ...bounds.space) }; break;
+      case 'spaceDown': patch = { space: clamp(track.space - 0.12, ...bounds.space) }; break;
+      case 'louder': patch = { gainDb: clamp(track.gainDb + 2, ...bounds.gainDb) }; break;
+      case 'quieter': patch = { gainDb: clamp(track.gainDb - 2, ...bounds.gainDb) }; break;
       case 'mute': patch = { mute: true }; break;
       case 'unmute': patch = { mute: false }; break;
       case 'solo': patch = { solo: true, mute: false }; break;

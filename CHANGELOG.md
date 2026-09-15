@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-rc.2 — 15 September 2026
+
+- Added selected-stem Timbre and tempo-linked rhythmic Glitch, with the same live/export processing.
+- Added six stem presets and an undoable per-stem switch for 50% wider effect ranges. Gain/pan retain their physical/safety limits; switching back to normal bounds clamps extended values explicitly.
+- Version-2 project saves preserve the new controls. Version-1 imports migrate with neutral effects; older apps explicitly reject newer archives.
+- Reduced backdrop and panel tint to reveal more carriage colour through dark glass, including the mobile layout.
+- Replaced app/Home Screen icons with a matching simple 3D crate and tinted JW monogram.
+- Recorded the owner's RC1 iPhone functional pass; iPad and new-feature device checks remain pending. See docs/DEVICE_FEEDBACK.md and docs/RC2_REVIEW.md.
+
 ## 1.0.0-rc.1 — 15 September 2026
 
 A functional rebuild of JuiceWeaver and the first reusable CRATE JUICE application foundation. This starts a new release history based on implemented behaviour. Prior `v0.3`/`3.0` labels and files remain in Git history; their advertised features are not evidence that those features shipped.

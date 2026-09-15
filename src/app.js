@@ -3,7 +3,9 @@ import { applyBrand, mountBrand, safeFilename } from '../foundation/brand.js';
 import { icon, paintIcons } from './icons.js';
 import { JuiceEngine } from './audio/engine.js';
 import { createDemo } from './audio/demo.js';
+import { GLITCH_CONTROL_RATE } from './audio/rhythm.js';
 import { newSession, newTrack, cloneSession, validateSession, LIMITS, TRACK_BOUNDS, MASTER_DB_BOUNDS } from './core/model.js';
+import { trackBounds, setExpanded, STEM_PRESETS, presetPatch } from './core/effects.js';
 import { encodeProject, decodeProject, validateAssetReferences } from './core/project.js';
 import { createRecoveryStore } from './core/storage.js';
 import { interpretPrompt, PROMPT_EXAMPLES } from './core/prompts.js';
@@ -35,7 +37,9 @@ async function task(title,fn,detail){if(busy)return;setBusy(true,title,detail);t
 function snapshot(){return{session:cloneSession(session),assets:new Map(assets)};}
 function equal(a,b){return JSON.stringify(a)===JSON.stringify(b);}
 function memoryFootprint(extra=[]){const seen=new Set();let bytes=exportBytes;for(const map of [assets,...undo.map(s=>s.assets),...redo.map(s=>s.assets),...(recovery?[recovery.assets]:[]),...extra])for(const a of map.values()){if(!seen.has(a.bytes)){seen.add(a.bytes);bytes+=a.bytes.byteLength;}if(a.buffer&&!seen.has(a.buffer)){seen.add(a.buffer);bytes+=a.buffer.length*a.buffer.numberOfChannels*4;}}return bytes;}
-function guardMemory(extraBytes=0,maps=[]){if(memoryFootprint(maps)+extraBytes>256*1024*1024)throw new Error('This would exceed the working-memory budget. Download a project backup and reload before opening another session, or use shorter stems.');}
+// Reserve both live and export control buffers, even before glitch is enabled.
+const EFFECT_CONTROL_RESERVE_BYTES=2*LIMITS.MAX_DURATION_SECONDS*GLITCH_CONTROL_RATE*4;
+function guardMemory(extraBytes=0,maps=[]){if(memoryFootprint(maps)+extraBytes+EFFECT_CONTROL_RESERVE_BYTES>256*1024*1024)throw new Error('This would exceed the working-memory budget. Download a project backup and reload before opening another session, or use shorter stems.');}
 function trimHistory(){
   const retained=()=>{const seen=new Set();let total=0;for(const state of [{assets},...undo,...redo])for(const asset of state.assets.values())if(!seen.has(asset)){seen.add(asset);total+=(asset.buffer?asset.buffer.length*asset.buffer.numberOfChannels*4:0)+asset.bytes.byteLength;}return total;};
   while(undo.length>25||retained()>LIMITS.MAX_DECODED_BYTES*2.25){if(undo.length)undo.shift();else if(redo.length)redo.shift();else break;}
@@ -87,10 +91,11 @@ function renderTracks(){
   });if(focusedId&&$(focusedId))$(focusedId).focus({preventScroll:true});requestAnimationFrame(drawWaves);
 }
 function drawWaves(){for(const {canvas,asset,colour}of rowCanvases.values())drawWaveform(canvas,asset.buffer,colour,engine.duration);}
-function effectLabel(key,value){if(key==='pan')return value===0?'Centre':`${Math.round(Math.abs(value)*100)}% ${value<0?'L':'R'}`;if(['drive','space'].includes(key))return `${Math.round(value*100)}%`;return `${value>0?'+':''}${value} dB`;}
+function effectLabel(key,value){if(key==='pan')return value===0?'Centre':`${Math.round(Math.abs(value)*100)}% ${value<0?'L':'R'}`;if(key==='timbre')return value===0?'Neutral':`${value>0?'+':''}${Math.round(value*100)}%`;if(key==='glitch'&&value===0)return 'Off';if(['drive','space','glitch'].includes(key))return `${Math.round(value*100)}%`;return `${value>0?'+':''}${value} dB`;}
 function renderInspector(){
   const track=session.tracks.find(t=>t.id===selected);$('tone-controls').disabled=!track;$('selected-name').textContent=track?.name||'Make it yours';$('selection-hint').textContent=track?`${track.role.charAt(0).toUpperCase()+track.role.slice(1)} · changes follow your ears`:'Select a stem to find its sweet spot.';
-  for(const input of $('tone-controls').querySelectorAll('input[data-param]')){const value=track?.[input.dataset.param]||0;input.value=value;$(input.id+'-value').textContent=effectLabel(input.dataset.param,value);rangeFill(input);}
+  for(const input of $('tone-controls').querySelectorAll('input[data-param]')){const value=track?.[input.dataset.param]||0;const [min,max]=trackBounds(track||false)[input.dataset.param];input.min=min;input.max=max;input.value=value;$(input.id+'-value').textContent=effectLabel(input.dataset.param,value);rangeFill(input);}
+  $('widen-effects').checked=track?.expanded===true;
 }
 function rangeFill(input){const min=Number(input.min),max=Number(input.max);input.style.setProperty('--range-fill',`${(Number(input.value)-min)/(max-min)*100}%`);}
 function render(){
@@ -162,7 +167,13 @@ $('seek').addEventListener('input',()=>$('current-time').textContent=secondsLabe
 $('seek').addEventListener('change',()=>{engine.seek(Number($('seek').value));seekActive=false;renderTransport();});
 attachSlider($('master-volume'),value=>{session.masterDb=value;$('master-value').textContent=`${value} dB`;},()=>`Master level ${session.masterDb} dB`);
 for(const input of $('tone-controls').querySelectorAll('input[data-param]'))attachSlider(input,value=>{const track=session.tracks.find(t=>t.id===selected);if(track){track[input.dataset.param]=value;$(input.id+'-value').textContent=effectLabel(input.dataset.param,value);rangeFill(input);}},()=>`Adjusted ${input.dataset.param} on ${session.tracks.find(t=>t.id===selected)?.name||'stem'}`);
-$('reset-tone').addEventListener('click',()=>{const track=session.tracks.find(t=>t.id===selected);if(!track)return;const before=snapshot();Object.assign(track,{lowDb:0,highDb:0,drive:0,space:0,pan:0});record(before,`Reset tone on ${track.name}`);});
+$('reset-tone').addEventListener('click',()=>{const track=session.tracks.find(t=>t.id===selected);if(!track)return;const before=snapshot();Object.assign(track,{lowDb:0,highDb:0,drive:0,space:0,pan:0,timbre:0,glitch:0});record(before,`Reset tone on ${track.name}`);});
+
+$('widen-effects').addEventListener('change',()=>{const track=session.tracks.find(t=>t.id===selected);if(!track)return;const before=snapshot(),expanded=$('widen-effects').checked,patch=setExpanded(track,expanded);const clamped=Object.entries(patch).some(([key,value])=>key!=='expanded'&&track[key]!==value);Object.assign(track,patch);record(before,`${expanded?'Widened':'Restored normal'} effect ranges on ${track.name}`);message(expanded?'This stem’s effect ranges are 50% wider.':clamped?'Normal ranges restored; extended values brought back into range. Undo restores them.':'This stem’s normal effect ranges restored.');});
+for(const preset of STEM_PRESETS){const option=textNode('option','',preset.name);option.value=preset.id;$('stem-preset').append(option);}
+function describePreset(){$('preset-description').textContent=STEM_PRESETS.find(p=>p.id===$('stem-preset').value)?.description||'';}
+$('stem-preset').addEventListener('change',describePreset);describePreset();
+$('apply-stem-preset').addEventListener('click',()=>{const track=session.tracks.find(t=>t.id===selected);if(!track)return;const preset=STEM_PRESETS.find(p=>p.id===$('stem-preset').value);if(!preset)return;const before=snapshot();Object.assign(track,presetPatch(preset.id,track));record(before,`Applied ${preset.name} to ${track.name}`);message(`${preset.name} applied to ${track.name}. Undo is ready.`);});
 $('undo-button').addEventListener('click',()=>undoChange());$('redo-button').addEventListener('click',()=>undoChange(true));
 $('project-name').addEventListener('change',()=>{const before=snapshot();session.name=$('project-name').value.trim()||'Untitled session';record(before,'Renamed session');$('project-name').value=session.name;});
 for(const example of PROMPT_EXAMPLES.slice(0,3)){const button=actionButton(example,'prompt-chip',example,()=>{$('weave-prompt').value=example;previewPrompt();});$('prompt-chips').append(button);}

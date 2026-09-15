@@ -89,3 +89,12 @@ test('effect reset preserves levels/pan and safe limits do not create false work
   assert.equal(interpretPrompt('Brighter master', original).understood, false);
   assert.equal(interpretPrompt('Warm the mix', newSession()).understood, false);
 });
+
+test('new colour and glitch commands respect per-stem limits and reset both effects', () => {
+  const input = session(); const bass = input.tracks.find(track => track.role === 'bass');
+  Object.assign(bass, { timbre: -1.4, glitch: 1.4, expanded: true });
+  assert.deepEqual(interpretPrompt('More glitch bass', input).changes, [{ id: bass.id, patch: { glitch: 1.5 } }]);
+  assert.deepEqual(interpretPrompt('Rounder timbre bass', input).changes, [{ id: bass.id, patch: { timbre: -1.5 } }]);
+  assert.deepEqual(interpretPrompt('Clearer timbre bass', input).changes, [{ id: bass.id, patch: { timbre: -1.25 } }]);
+  assert.deepEqual(interpretPrompt('Reset effects bass', input).changes, [{ id: bass.id, patch: { timbre: 0, glitch: 0 } }]);
+});
