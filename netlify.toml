@@ -15,6 +15,11 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+[[headers]]
+  for = "/identity.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "no-cache"
 [[redirects]]
   from = "/stemweaver-v0.3.html"
   to = "/"
