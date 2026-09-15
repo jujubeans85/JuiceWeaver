@@ -198,6 +198,23 @@ runButton.addEventListener('click', async () => {
       engine.stop();
       return 'Two sources share the 0.3 s native loop boundary; the short stem is zero-padded. Non-loop end remains stopped.';
     });
+    await check('Disabling Loop after a full cycle preserves the current playhead', async () => {
+      const loop = makeBuffer(0.4, () => 0);
+      const { session, assets } = makeSession([loop], { loop: true, masterDb: -24 });
+      await engine.play(session, assets);
+      await wait(515);
+      // Keep the assertion away from an actual loop boundary even if this
+      // browser schedules the test callback late under load.
+      for (let attempt = 0; attempt < 40 && (engine.position < 0.05 || engine.position > 0.2); attempt++) await wait(10);
+      const before = engine.position;
+      assert(before >= 0.05 && before <= 0.2, 'The browser did not provide a stable mid-loop observation window.');
+      session.loop = false;
+      engine.update(session, assets);
+      const after = engine.position;
+      assert(Math.abs(after - before) < 0.035 && engine.playing, 'Disabling Loop jumped to the end or stopped playback.');
+      engine.stop();
+      return `After at least one cycle, the same session object changed to non-loop: ${before.toFixed(4)} s → ${after.toFixed(4)} s; playback continued.`;
+    });
     await check('Adding or removing room while playing updates the non-loop tail', async () => {
       const short = makeBuffer(0.1, (i) => i === 240 ? 0.025 : 0);
       const { session, assets } = makeSession([short], { masterDb: -24 });
