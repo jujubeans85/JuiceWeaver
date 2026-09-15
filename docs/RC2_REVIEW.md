@@ -68,12 +68,12 @@ An actual UI WAV download was also inspected: 192,044 bytes, stereo 48 kHz PCM16
 6. Controls, presets, project persistence, prompt reset and UI reset include both new effects. Source audio stays intact.
 7. Home Screen PNGs and the in-app corner mark use the same crate/JW artwork. Actual installed icon refresh remains device-dependent and unverified.
 
-## Final release gates — implementing reviewer to complete
+## Final release gates — complete
 
-- **Final native audio proof:** 21/21 passed on the approved numeric-repeatability fixture under the staged `/preview/tests/audio-proof.html` path. App fingerprint is recorded above; final source commit will identify the published fixture.
+- **Final native audio proof:** 21/21 passed on the approved numeric-repeatability fixture under the staged `/preview/tests/audio-proof.html` path. App fingerprint is recorded above; the source commit below identifies the published fixture.
 - **Final native recovery proof:** 12/12 passed and reobserved on staged RC2 under `/preview/tests/core-browser.html`.
-- **Canonical deployment and fingerprint:** PENDING — verify live canonical URL serves the fingerprint above, then smoke-test the published build.
-- **Release identity:** the app fingerprint above identifies the approved application; publication metadata records the final source commit.
+- **Canonical deployment and fingerprint:** PASS. Netlify deploy `6aa8bea7070ae63c213595e5` published at 2026-09-15T03:42:56.045Z. All 41 served build files matched local bytes, including release metadata and all icon sizes; `/sw.js` returns `Cache-Control: no-cache`. The canonical browser showed RC2, played the demo, applied Broken beat (timbre +20%, glitch 85%, drive 22%) and paused successfully.
+- **Release identity:** application source commit `2be1f1b5d3147a105ed46d4bfb27550768b6fa19`, followed only by review-record updates in [PR #5](https://github.com/jujubeans85/JuiceWeaver/pull/5). The app fingerprint above identifies the exact approved application.
 
 ## Device and commercial boundaries
 
