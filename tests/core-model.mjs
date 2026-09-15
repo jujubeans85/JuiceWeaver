@@ -7,7 +7,7 @@ const session = () => newSession({ id: 'session_1', tracks: [stem()] });
 
 test('new sessions have a safe empty state and inferred stem identity', () => {
   const empty = newSession();
-  assert.equal(empty.schema, 1);
+  assert.equal(empty.schema, 2);
   assert.equal(empty.masterDb, -6);
   assert.equal(empty.bpm, 88);
   assert.equal(empty.loop, true);
@@ -37,7 +37,7 @@ test('non-finite numbers and incorrect types never become valid controls', () =>
   }
   const source = session(); source.loop = 'false';
   assert.throws(() => validateSession(source), /true or false/);
-  source.loop = false; source.schema = 2;
+  source.loop = false; source.schema = 99;
   assert.throws(() => validateSession(source), /unsupported session version/);
 });
 
@@ -72,4 +72,44 @@ test('history keeps the most recent fifty bounded entries', () => {
   assert.equal(result.journal[0].text, 'Edit 10');
   input.journal = [{ at: 'not a timestamp', text: 'Edit' }];
   assert.throws(() => validateSession(input), /timestamp/);
+});
+
+test('legacy sessions migrate neutral effects while current sessions require typed controls', () => {
+  const old = session(); old.schema = 1;
+  delete old.tracks[0].timbre; delete old.tracks[0].glitch; delete old.tracks[0].expanded;
+  const upgraded = validateSession(old);
+  assert.equal(upgraded.schema, 2);
+  assert.deepEqual([upgraded.tracks[0].timbre, upgraded.tracks[0].glitch, upgraded.tracks[0].expanded], [0, 0, false]);
+  assert.equal(old.schema, 1);
+  for (const field of ['timbre', 'glitch']) for (const invalid of [null, '0.5', undefined, NaN, Infinity]) {
+    const input = session(); input.tracks[0][field] = invalid;
+    assert.throws(() => validateSession(input), /finite/);
+  }
+  for (const invalid of [null, 'true', 1, undefined]) {
+    const input = session(); input.tracks[0].expanded = invalid;
+    assert.throws(() => validateSession(input), /true or false/);
+  }
+});
+
+test('expanded settings preserve 150% effect range and disabling clamps without moving pan or gain', async () => {
+  const { setExpanded, trackBounds, presetPatch, STEM_PRESETS } = await import('../src/core/effects.js');
+  const original = stem({ expanded: true, lowDb: -18, highDb: 18, drive: 1.5, space: 1.5, timbre: -1.5, glitch: 1.5, gainDb: 6, pan: -1 });
+  assert.equal(original.lowDb, -18);
+  assert.equal(original.glitch, 1.5);
+  const narrowed = { ...original, ...setExpanded(original, false) };
+  assert.deepEqual([narrowed.lowDb, narrowed.highDb, narrowed.drive, narrowed.space, narrowed.timbre, narrowed.glitch], [-12, 12, 1, 1, -1, 1]);
+  assert.deepEqual([narrowed.pan, narrowed.gainDb], [-1, 6]);
+  assert.equal(original.expanded, true);
+  assert.equal(original.glitch, 1.5);
+  const clampOnImport = validateSession(newSession({ tracks: [ { ...original, expanded: false } ] })).tracks[0];
+  assert.equal(clampOnImport.glitch, 1);
+  for (const preset of STEM_PRESETS) {
+    const patch = presetPatch(preset.id, original);
+    for (const [key, value] of Object.entries(patch)) {
+      assert.ok(value >= trackBounds(original)[key][0] && value <= trackBounds(original)[key][1]);
+    }
+    assert.equal('gainDb' in patch, false);
+    assert.equal('expanded' in patch, false);
+  }
+  assert.throws(() => presetPatch('unknown', original), /known/);
 });

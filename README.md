@@ -4,27 +4,38 @@
 
 JuiceWeaver is a local stem studio: bring separate audio parts, shape the mix, save an editable project and export a WAV. It also establishes the shared CRATE JUICE design and engineering foundation for future tools.
 
-[Open JuiceWeaver](https://juiceweaver.netlify.app/) · **1.0.0-rc.1 — evaluation release candidate**
+[Open JuiceWeaver](https://juiceweaver.netlify.app/) · **1.0.0-rc.2 — evaluation release candidate**
 
-Physical iPhone/iPad verification remains outstanding. This is an evaluation build, not a certified commercial release. Earlier “3.0” documentation described capabilities that were not implemented; this README describes the current code.
+The owner reports all RC1 functions passed on their iOS phone. iPad testing remains pending; the newly added RC2 effects and icon still need their own device pass. This is an evaluation build, not a certified commercial release. Earlier “3.0” documentation described capabilities that were not implemented; this README describes the current code.
 
 ## Make something in a minute
 
 1. Choose **Play the demo** for four original parts at 88 BPM, or **Add stems** to import your files. Use stems exported from the same starting point.
-2. Press Play. Adjust levels; **M** mutes a part and **S** solos it. Select a stem to adjust pan, bass, treble, drive and room.
+2. Press Play. Adjust levels; **M** mutes a part and **S** solos it. Select a stem to adjust pan, bass, treble, drive, room, timbre and glitch.
 3. Try **Warm the mix** or **Softer keys**. Review the proposed change, then choose **Apply change**. These are deterministic local commands, not an AI model. Use one change at a time; unsupported requests leave the mix unchanged.
 4. Choose **Save project → Prepare project → Download project** to keep the original audio and settings in one `.juice` file. Use **Open** to restore it. Browser recovery is convenient; a downloaded project is your backup.
 5. Choose **Export mix → Prepare WAV → Download WAV** for a stereo 48 kHz, 16-bit WAV. Peak protection only reduces excessive levels; it never boosts a quiet mix. An audible room effect adds a two-second tail.
 
 Undo/redo is available. On desktop, Space toggles playback away from editors, dialogs and interactive controls; focused buttons keep their normal Space action. Cmd/Ctrl+Z undoes a change outside an editor or dialog. **Make it yours** changes the backdrop, accent and motion preference.
 
+## New sound controls
+
+Select a stem in **The parts**. All tone controls and presets apply only to that selected stem.
+
+- **Timbre:** move toward Body for rounder low-mid character, or Presence for more forward upper-mid character. It changes spectral colour without changing pitch.
+- **Glitch:** add a tempo-linked, irregular rhythmic gate. Higher values deepen the cuts; exported WAV uses the same processing.
+- **Presets:** choose Clean slate, Velvet body, Clear glass, Broken beat, Carriage radio or Fractured space; read the description, then Apply. Presets replace the six effect settings while preserving level, pan and range choice. Undo restores your previous settings.
+- **Widen effects +50%:** an independent choice for each stem. Bass/treble extend from ±12 to ±18 dB; Timbre extends from ±100% to ±150%; Drive, Space and Glitch extend to 150%. Gain and pan retain their normal limits. Switching widening off brings extended values back into the normal range; Undo restores them.
+
+Old `.juice` projects open with the new effects off. RC2 saves use project format 2 so these new settings survive a round trip; an older RC1 app cannot open those new files. Keep an original backup if you need to return to RC1.
+
 ## What to expect
 
 | Capability | Current behaviour |
 |---|---|
-| Mixing | Shared start time, seek, whole-session loop, gain, mute/solo, pan, shelves, drive and room |
+| Mixing | Shared start time, seek, whole-session loop, gain, mute/solo, pan, shelves, drive, room, timbre and rhythmic glitch |
 | Shorter stems | Silence after their end until the next whole-session loop |
-| Tempo | Project metadata; no automatic beat matching or time stretching |
+| Tempo | Stored tempo sets the glitch rhythm; no automatic beat matching or time stretching |
 | Import | Mono/stereo audio the current browser can inspect and decode; PCM WAV is the most predictable starting point |
 | Limits | 8 stems; 180 seconds each; 64 MiB per source file; 96 MiB total originals; 96 MiB total decoded audio |
 | Privacy | Audio processing and commands run locally; no account, analytics, model API or audio upload is implemented |
@@ -61,7 +72,7 @@ npm run scaffold -- my-next-tool
 
 This creates a small working example under `examples/my-next-tool/`, sharing `foundation/brand.js` and `foundation/tokens.css`. Give it its own configuration and application logic. JuiceWeaver identity lives in `src/config.js`; audio and project logic stay in their own modules. Follow [AGENTS.md](AGENTS.md) for the release and review contract.
 
-Run the browser proof pages through the local server: [audio](http://localhost:8765/tests/audio-proof.html) and [projects/storage](http://localhost:8765/tests/core-browser.html). The [native browser evidence](docs/NATIVE_BROWSER_EVIDENCE.md), [studio workflow results](docs/UI_WORKFLOW_EVIDENCE.md) and [final deployment checks](docs/RELEASE_EVIDENCE.md) identify their exact artifacts and evidence boundaries. See [audio architecture](src/audio/README.md) for the DSP/API details.
+Run the browser proof pages through the local server: [audio](http://localhost:8765/tests/audio-proof.html) and [projects/storage](http://localhost:8765/tests/core-browser.html). The [RC2 release review](docs/RC2_REVIEW.md) records this iteration. The [native browser evidence](docs/NATIVE_BROWSER_EVIDENCE.md), [studio workflow results](docs/UI_WORKFLOW_EVIDENCE.md) and [final deployment checks](docs/RELEASE_EVIDENCE.md) identify their exact artifacts and evidence boundaries. See [audio architecture](src/audio/README.md) for the DSP/API details.
 
 ## Hosting
 

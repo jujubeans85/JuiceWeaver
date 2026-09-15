@@ -1,6 +1,8 @@
 import { encodeWav, measurePeak } from './wav.js';
 import { inspectAudio } from './preflight.js';
-import { LIMITS, TRACK_BOUNDS, MASTER_DB_BOUNDS } from '../core/model.js';
+import { LIMITS, MASTER_DB_BOUNDS } from '../core/model.js';
+import { trackBounds } from '../core/effects.js';
+import { glitchControlSamples, GLITCH_CONTROL_RATE } from './rhythm.js';
 
 export const AUDIO_LIMITS = Object.freeze({
   tracks: LIMITS.MAX_TRACKS, seconds: LIMITS.MAX_DURATION_SECONDS,
@@ -23,7 +25,7 @@ function validateSamples(buffer) {
 
 function roomTail(session) {
   const hasSolo = session.tracks.some((track) => track.solo);
-  return session.tracks.some((track) => !track.mute && (!hasSolo || track.solo) && clamp(track.space, ...TRACK_BOUNDS.space) > 0) ? REVERB_TAIL_SECONDS : 0;
+  return session.tracks.some((track) => !track.mute && (!hasSolo || track.solo) && clamp(track.space, ...trackBounds(track).space) > 0) ? REVERB_TAIL_SECONDS : 0;
 }
 
 function driveCurve(amount) {
@@ -112,13 +114,22 @@ function validate(session, assets) {
   return { duration, decodedBytes };
 }
 
-function createTrackGraph(context, master, track, session) {
+function createTrackGraph(context, master, track, session, timing) {
   const low = context.createBiquadFilter();
   low.type = 'lowshelf';
   low.frequency.value = 160;
   const high = context.createBiquadFilter();
   high.type = 'highshelf';
   high.frequency.value = 4000;
+  const body = context.createBiquadFilter();
+  body.type = 'peaking'; body.frequency.value = 350; body.Q.value = 0.7;
+  const presence = context.createBiquadFilter();
+  presence.type = 'peaking'; presence.frequency.value = 2200; presence.Q.value = 0.9;
+  const gate = context.createGain();
+  gate.gain.value = 1;
+  const gateDepth = context.createGain();
+  gateDepth.gain.value = 0;
+  gateDepth.connect(gate.gain);
   const drive = context.createWaveShaper();
   // No oversampling latency in the neutral path; source timing remains sample-aligned.
   drive.oversample = 'none';
@@ -131,21 +142,22 @@ function createTrackGraph(context, master, track, session) {
   const sum = context.createGain();
   const pan = context.createStereoPanner();
   const level = context.createGain();
-  low.connect(high);
-  high.connect(driveClean).connect(driveSum);
-  high.connect(drive).connect(driveColor).connect(driveSum);
+  low.connect(high).connect(body).connect(presence).connect(gate);
+  gate.connect(driveClean).connect(driveSum);
+  gate.connect(drive).connect(driveColor).connect(driveSum);
   driveSum.connect(dry).connect(sum);
   wet.connect(sum);
   sum.connect(pan).connect(level).connect(master);
-  const graph = { input: low, low, high, drive, driveClean, driveColor, driveSum, dry, wet, sum, pan, level, convolver: null, assetId: track.assetId };
+  const graph = { input: low, low, high, body, presence, gate, gateDepth, gateSource: null, timing, drive, driveClean, driveColor, driveSum, dry, wet, sum, pan, level, convolver: null, assetId: track.assetId };
   updateTrackGraph(context, graph, track, session, true);
   return graph;
 }
 
 function updateTrackGraph(context, graph, track, session, immediate = false) {
+  const bounds = trackBounds(track);
   const soloActive = session.tracks.some((candidate) => candidate.solo);
   const audible = !track.mute && (!soloActive || track.solo);
-  const space = clamp(track.space, ...TRACK_BOUNDS.space);
+  const space = clamp(track.space, ...bounds.space);
   if (space > 0 && !graph.convolver) {
     graph.convolver = context.createConvolver();
     // Fixed, original room impulse; Web Audio normalization keeps wet level portable.
@@ -153,30 +165,66 @@ function updateTrackGraph(context, graph, track, session, immediate = false) {
     graph.convolver.buffer = roomImpulse(context);
     graph.driveSum.connect(graph.convolver).connect(graph.wet);
   }
-  setParam(graph.low.gain, clamp(track.lowDb, ...TRACK_BOUNDS.lowDb), context, immediate);
-  setParam(graph.high.gain, clamp(track.highDb, ...TRACK_BOUNDS.highDb), context, immediate);
+  const timbre = clamp(track.timbre, ...bounds.timbre);
+  setParam(graph.body.gain, -timbre * 6, context, immediate);
+  setParam(graph.presence.gain, timbre * 8, context, immediate);
+  const glitch = clamp(track.glitch, ...bounds.glitch);
+  if (glitch > 0 && !graph.gateSource) {
+    const timing = graph.timing;
+    if (!timing.controlBuffer) {
+      timing.controlBuffer = context.createBuffer(1, Math.ceil(timing.duration * GLITCH_CONTROL_RATE), GLITCH_CONTROL_RATE);
+      glitchControlSamples(timing.duration, timing.bpm, timing.loop, timing.controlBuffer.getChannelData(0));
+    }
+    const source = context.createBufferSource();
+    source.buffer = timing.controlBuffer;
+    source.loop = timing.loop;
+    source.loopEnd = timing.duration;
+    source.connect(graph.gateDepth);
+    graph.gateSource = source;
+    if (timing.active) startGate(context, graph);
+  }
+  // Attenuating control signal: normal depth65%, expanded depth97.5%.
+  setParam(graph.gateDepth.gain, glitch * 0.65, context, immediate);
+  setParam(graph.low.gain, clamp(track.lowDb, ...bounds.lowDb), context, immediate);
+  setParam(graph.high.gain, clamp(track.highDb, ...bounds.highDb), context, immediate);
   setParam(graph.dry.gain, 1 - space * 0.2, context, immediate);
   setParam(graph.wet.gain, space * 0.42, context, immediate);
-  setParam(graph.pan.pan, clamp(track.pan, ...TRACK_BOUNDS.pan), context, immediate);
-  setParam(graph.level.gain, audible ? dbToGain(clamp(track.gainDb, ...TRACK_BOUNDS.gainDb)) : 0, context, immediate);
+  setParam(graph.pan.pan, clamp(track.pan, ...bounds.pan), context, immediate);
+  setParam(graph.level.gain, audible ? dbToGain(clamp(track.gainDb, ...bounds.gainDb)) : 0, context, immediate);
   // Drive is a smoothed parallel blend. Editing a shaper curve while it carries
   // audio can create a discontinuity, so its curve stays fixed for the graph's life.
-  const drive = clamp(track.drive, ...TRACK_BOUNDS.drive);
-  setParam(graph.driveClean.gain, 1 - drive, context, immediate);
+  const drive = clamp(track.drive, ...bounds.drive);
+  setParam(graph.driveClean.gain, Math.max(0, 1 - drive), context, immediate);
   setParam(graph.driveColor.gain, drive, context, immediate);
 }
 
-function buildGraph(context, destination, session) {
+
+function startGate(context, track) {
+  const timing = track.timing;
+  const when = Math.max(context.currentTime, timing.when);
+  const position = timing.offset + Math.max(0, when - timing.when);
+  const offset = timing.loop ? position % timing.duration : position;
+  if (offset < timing.duration) track.gateSource.start(when, offset);
+}
+function startGraphControls(context, graph, when) {
+  graph.timing.when = when;
+  graph.timing.active = true;
+  for (const track of graph.tracks.values()) if (track.gateSource) startGate(context, track);
+}
+
+function buildGraph(context, destination, session, { duration, when = context.currentTime, offset = 0 }) {
+  const timing = { duration, when, offset, bpm: clamp(session.bpm, 40, 240, 88), loop: Boolean(session.loop), controlBuffer: null, active: false };
   const master = context.createGain();
   master.gain.value = dbToGain(clamp(session.masterDb, ...MASTER_DB_BOUNDS, -6));
   master.connect(destination);
-  const tracks = new Map(session.tracks.map((track) => [track.id, createTrackGraph(context, master, track, session)]));
-  return { master, tracks, loop: Boolean(session.loop), buffers: new Map() };
+  const tracks = new Map(session.tracks.map((track) => [track.id, createTrackGraph(context, master, track, session, timing)]));
+  return { master, tracks, timing, bpm: session.bpm, loop: Boolean(session.loop), buffers: new Map() };
 }
 
 function disconnectGraph(graph) {
   if (!graph) return;
   for (const track of graph.tracks.values()) {
+    if (track.gateSource) { try { track.gateSource.stop(); } catch { /* Not started or already ended. */ } }
     for (const node of new Set(Object.values(track).filter((value) => value && typeof value.disconnect === 'function'))) {
       try { node.disconnect(); } catch { /* Already disconnected during context shutdown. */ }
     }
@@ -275,7 +323,7 @@ export class JuiceEngine {
     const { duration } = validate(session, assets);
     const previousPosition = this.position;
     const structuralChange = this._playing && (
-      this._duration !== duration || this._graph.loop !== Boolean(session.loop) ||
+      this._duration !== duration || this._graph.bpm !== session.bpm || this._graph.loop !== Boolean(session.loop) ||
       this._graph.tracks.size !== session.tracks.length || session.tracks.some((track) => {
         const graph = this._graph.tracks.get(track.id);
         return !graph || graph.assetId !== track.assetId || this._graph.buffers.get(track.id) !== assets.get(track.assetId)?.buffer;
@@ -318,7 +366,7 @@ export class JuiceEngine {
     this._offset = offset >= this._duration ? 0 : offset;
     this._startedAt = context.currentTime + 0.025;
     this._playing = true;
-    this._graph = buildGraph(context, context.destination, this._session);
+    this._graph = buildGraph(context, context.destination, this._session, { duration: this._duration, when: this._startedAt, offset: this._offset });
     this._graph.buffers = new Map(this._session.tracks.map((track) => [track.id, this._assets.get(track.assetId).buffer]));
     this._nativeLoop = Boolean(this._session.loop) && (
       this._duration < 1 || this._session.tracks.every((track) => this._assets.get(track.assetId).buffer.duration === this._duration)
@@ -348,6 +396,10 @@ export class JuiceEngine {
     }
     sink.connect(context.destination);
     this._analyzers = { nodes: analyzers, splitter, sink, data: new Float32Array(2048) };
+    // Allocate graph/control data and loop padding first, then choose one future
+    // start time. A slow phone must never advance only the control-source phase.
+    this._startedAt = context.currentTime + 0.025;
+    startGraphControls(context, this._graph, this._startedAt);
     this._scheduleGroup(this._startedAt, this._offset);
     this._nextLoopAt = this._startedAt + this._duration - this._offset;
     if (this._session.loop && !this._nativeLoop) {
@@ -483,12 +535,14 @@ export class JuiceEngine {
     const tail = roomTail(session);
     const sampleRate = RENDER_SAMPLE_RATE;
     const length = Math.ceil((duration + tail) * sampleRate);
-    const estimate = decodedBytes + length * 2 * (4 + 2) + session.tracks.length * sampleRate * 2 * 4 * REVERB_TAIL_SECONDS;
+    const controlBytes = session.tracks.some(track => track.glitch > 0) ? Math.ceil(duration * GLITCH_CONTROL_RATE) * 4 : 0;
+    const estimate = decodedBytes + controlBytes + length * 2 * (4 + 2) + session.tracks.length * sampleRate * 2 * 4 * REVERB_TAIL_SECONDS;
     if (estimate > AUDIO_LIMITS.renderBytes) throw new Error('This export exceeds the safe processing budget. Use shorter stems or export fewer at once.');
     const Constructor = globalThis.OfflineAudioContext || globalThis.webkitOfflineAudioContext;
     if (!Constructor) throw new Error('Offline audio export is unavailable in this browser. Use current Safari, Chrome or Firefox.');
     const offline = new Constructor(2, length, sampleRate);
-    const graph = buildGraph(offline, offline.destination, session);
+    const graph = buildGraph(offline, offline.destination, session, { duration, when: 0 });
+    startGraphControls(offline, graph, 0);
     for (const track of session.tracks) {
       const source = offline.createBufferSource();
       source.buffer = assets.get(track.assetId).buffer;
